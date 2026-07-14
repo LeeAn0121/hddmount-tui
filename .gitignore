@@ -1,0 +1,4 @@
+/hddmount
+/dist/
+*.deb
+*.tar.gz

@@ -1,0 +1,112 @@
+name: publish-apt-repo
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  REPO_COMPONENT: main
+  REPO_SUITE: stable
+  REPO_ARCHES: "amd64 arm64"
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source (for CHANGELOG/version info only)
+        uses: actions/checkout@v4
+
+      - name: Install repo tooling
+        run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg
+
+      - name: Download latest release .deb files
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download --pattern '*.deb' --dir dist --clobber \
+            $(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+
+      - name: Checkout gh-pages branch
+        uses: actions/checkout@v4
+        with:
+          ref: gh-pages
+          path: repo
+          fetch-depth: 0
+        continue-on-error: true
+
+      - name: Initialize gh-pages branch if missing
+        run: |
+          if [ ! -d repo/.git ]; then
+            mkdir -p repo
+            cd repo
+            git init
+            git checkout -b gh-pages
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+          fi
+
+      - name: Import GPG signing key
+        run: |
+          echo "${{ secrets.GPG_PRIVATE_KEY }}" | gpg --batch --import
+          echo "default-key ${{ secrets.GPG_KEY_ID }}" >> ~/.gnupg/gpg.conf
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+
+      - name: Build APT repo structure
+        run: |
+          set -eu
+          cd repo
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          mkdir -p pool/${REPO_COMPONENT}
+          cp -f ../dist/*.deb pool/${REPO_COMPONENT}/
+
+          for ARCH in ${REPO_ARCHES}; do
+            mkdir -p dists/${REPO_SUITE}/${REPO_COMPONENT}/binary-${ARCH}
+            dpkg-scanpackages --arch ${ARCH} pool /dev/null \
+              > dists/${REPO_SUITE}/${REPO_COMPONENT}/binary-${ARCH}/Packages
+            gzip -kf dists/${REPO_SUITE}/${REPO_COMPONENT}/binary-${ARCH}/Packages
+          done
+
+          cat > /tmp/apt-release.conf <<EOF
+          APT::FTPArchive::Release::Origin "koolsign";
+          APT::FTPArchive::Release::Label "hddmount-tui";
+          APT::FTPArchive::Release::Suite "${REPO_SUITE}";
+          APT::FTPArchive::Release::Codename "${REPO_SUITE}";
+          APT::FTPArchive::Release::Components "${REPO_COMPONENT}";
+          APT::FTPArchive::Release::Architectures "${REPO_ARCHES}";
+          EOF
+          apt-ftparchive -c /tmp/apt-release.conf release dists/${REPO_SUITE} \
+            > dists/${REPO_SUITE}/Release
+
+      - name: Sign repository
+        run: |
+          cd repo
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            -abs -o dists/${REPO_SUITE}/Release.gpg dists/${REPO_SUITE}/Release
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
+            --clearsign -o dists/${REPO_SUITE}/InRelease dists/${REPO_SUITE}/Release
+          gpg --export --armor "${{ secrets.GPG_KEY_ID }}" > pubkey.gpg
+
+      - name: Commit and push gh-pages
+        run: |
+          cd repo
+          git add -A
+          git commit -m "chore: update apt repo ($(date -u +%Y-%m-%dT%H:%M:%SZ))" || echo "no changes"
+          git remote remove origin 2>/dev/null || true
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git push origin gh-pages --force
+
+      - name: Enable GitHub Pages (first run only, ignored if already set)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${{ github.repository }}/pages" \
+            -f "source[branch]=gh-pages" -f "source[path]=/" || true
