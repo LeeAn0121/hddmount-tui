@@ -29,6 +29,9 @@ const (
 	scrMountPointWarnConfirm
 	scrFstabConfirm
 	scrUnmountConfirm
+	scrRaidDiskSelect
+	scrRaidLevelChoice
+	scrRaidConfirmType
 	scrRunning
 	scrRunError
 	scrSummary
@@ -84,6 +87,17 @@ type Model struct {
 	// SMART detail view
 	smartOutput string
 	smartErr    error
+
+	// RAID setup
+	diskErr        string
+	raidCandidates []diskutil.Disk
+	raidSelected   map[int]bool
+	raidCur        int
+	raidLevels     []int
+	raidLevelCur   int
+	raidLevel      int
+	raidDevs       []string // /dev/... device paths, selection order
+	raidName       string
 
 	// running screen
 	spin         spinner.Model
@@ -237,8 +251,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updatePartitionChoice(msg)
 	case scrFormatAllConfirm, scrNoFSConfirm, scrMountPointWarnConfirm, scrFstabConfirm, scrUnmountConfirm:
 		return m.updateYesNo(msg)
-	case scrFormatAllDeviceType, scrFormatAllFinalYes, scrNoFSDeviceType, scrMountPoint:
+	case scrFormatAllDeviceType, scrFormatAllFinalYes, scrNoFSDeviceType, scrMountPoint, scrRaidConfirmType:
 		return m.updateTextInput(msg)
+	case scrRaidDiskSelect:
+		return m.updateRaidDiskSelect(msg)
+	case scrRaidLevelChoice:
+		return m.updateRaidLevelChoice(msg)
 	case scrRunError, scrSummary, scrFatalError, scrSmartDetail:
 		return m.updateTerminalScreen(msg)
 	}
@@ -285,6 +303,12 @@ func (m *Model) View() string {
 		return m.viewYesNo("재부팅 시 자동 마운트되도록 /etc/fstab 에 등록할까요?")
 	case scrUnmountConfirm:
 		return m.viewYesNo(warnStyle.Render(fmt.Sprintf("%s 마운트를 해제할까요?", m.unmountTargetPath)))
+	case scrRaidDiskSelect:
+		return m.viewRaidDiskSelect()
+	case scrRaidLevelChoice:
+		return m.viewRaidLevelChoice()
+	case scrRaidConfirmType:
+		return m.viewRaidConfirmType()
 	case scrLoadingSmart:
 		return boxStyle.Render(fmt.Sprintf("%s SMART 정보를 읽는 중...", m.spin.View()))
 	case scrSmartDetail:
@@ -333,6 +357,9 @@ func (m *Model) handleStepResult(msg stepResultMsg) (tea.Model, tea.Cmd) {
 			return m, loadPartitionsCmd(m.selectedDisk.Name)
 		}
 		m.screen = m.afterRun
+		if m.afterRun == scrMountPoint {
+			resetTextInput(m, "/data/hdd_"+strings.ToLower(m.selectedDisk.Label))
+		}
 		if m.afterRun == scrSummary {
 			out, _ := diskutil.DiskFree(m.mountPoint)
 			m.dfOutput = out

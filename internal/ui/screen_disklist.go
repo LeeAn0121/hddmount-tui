@@ -29,6 +29,8 @@ func (m *Model) updateDiskList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.selectedDisk = m.disks[m.diskCur]
 		m.screen = scrLoadingSmart
 		return m, tea.Batch(m.spin.Tick, loadSmartCmd(m.selectedDisk.DevPath()))
+	case "R":
+		return m.startRaidSetup()
 	case "q", "esc":
 		m.quitting = true
 		return m, tea.Quit
@@ -64,6 +66,10 @@ func (m *Model) viewDiskList() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   s: SMART 상세   q: 종료"))
+	if m.diskErr != "" {
+		b.WriteString("\n" + errorStyle.Render(m.diskErr) + "\n")
+	}
+
+	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   q: 종료"))
 	return boxStyle.Render(b.String())
 }

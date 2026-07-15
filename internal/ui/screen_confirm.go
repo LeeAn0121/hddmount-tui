@@ -154,6 +154,8 @@ func (m *Model) cancelTextInput() (tea.Model, tea.Cmd) {
 		m.screen = scrPartitionChoice
 	case scrMountPoint:
 		m.screen = scrPartitionChoice
+	case scrRaidConfirmType:
+		m.screen = scrRaidLevelChoice
 	}
 	return m, nil
 }
@@ -200,6 +202,9 @@ func (m *Model) submitTextInput() (tea.Model, tea.Cmd) {
 
 	case scrMountPoint:
 		return m.submitMountPoint(value)
+
+	case scrRaidConfirmType:
+		return m.submitRaidConfirm(value)
 	}
 	return m, nil
 }
