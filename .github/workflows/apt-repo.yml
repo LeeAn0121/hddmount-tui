@@ -54,6 +54,9 @@ jobs:
           echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
           echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
 
+      - name: Copy landing page
+        run: cp -f docs/index.html repo/index.html
+
       - name: Build APT repo structure
         run: |
           set -eu
