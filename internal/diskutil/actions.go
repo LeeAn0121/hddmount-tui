@@ -96,11 +96,18 @@ var contentDirs = []string{
 // formatted and mounted filesystem, then normalizes ownership and permissions.
 func PrepareContentTree(mountPoint string) (string, error) {
 	var logs []string
+	uploadsPath := mountPoint + "/uploads"
+	if err := os.MkdirAll(uploadsPath, 0o755); err != nil {
+		return "", fmt.Errorf("uploads 디렉터리 생성 실패: %w", err)
+	}
+	logs = append(logs, "디렉터리 생성: "+uploadsPath)
+
 	for _, name := range contentDirs {
-		if err := os.MkdirAll(mountPoint+"/"+name, 0o755); err != nil {
+		path := uploadsPath + "/" + name
+		if err := os.MkdirAll(path, 0o755); err != nil {
 			return strings.Join(logs, "\n"), fmt.Errorf("%s 디렉터리 생성 실패: %w", name, err)
 		}
-		logs = append(logs, "디렉터리 생성: "+mountPoint+"/"+name)
+		logs = append(logs, "디렉터리 생성: "+path)
 	}
 
 	out, err := runCmd("chmod", "-R", "755", mountPoint)

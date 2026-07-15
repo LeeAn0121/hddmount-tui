@@ -99,12 +99,12 @@
 <div class="wrap">
 
   <header>
-    <span class="badge">v0.3.3 · Ubuntu · amd64 / arm64 · 정적 바이너리</span>
+    <span class="badge">v0.3.4 · Ubuntu · amd64 / arm64 · 정적 바이너리</span>
     <h1>hddmount-tui</h1>
     <p class="lead">
       1TB/2TB/4TB/8TB HDD를 안전하게 마운트하는 Go 기반 TUI + CLI 도구.
       SMART 체크, mdadm RAID1/RAID10, 비대화형 자동화까지 하나의 바이너리로.
-      포맷 후 표준 CMS 폴더/권한 설정과 busy 상태의 언마운트 복구까지 지원합니다.
+      포맷 후 uploads 하위 표준 CMS 폴더/권한 설정과 busy 상태의 언마운트 복구까지 지원합니다.
     </p>
     <div class="cta">
       <a class="btn primary" href="#install">설치하기</a>
@@ -142,7 +142,7 @@
       </div>
       <div class="card">
         <h3>포맷 후 CMS 폴더 준비</h3>
-        <p><code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code> 생성 후 권한/소유자 자동 설정.</p>
+        <p><code>uploads</code> 아래에 <code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code> 생성 후 권한/소유자 자동 설정.</p>
       </div>
       <div class="card">
         <h3>fstab 안전망</h3>
@@ -213,7 +213,7 @@
 파티션: /dev/md/raid1_48213
 마운트 포인트: /data/raid_2tb
 fstab: 등록됨 (재부팅 시 자동 마운트)
-표준 폴더: 생성 완료 (www-data:www-data, 755)
+표준 폴더: uploads 하위 생성 완료 (www-data:www-data, 755)
 
 <span class="t-muted">Filesystem      Size  Used Avail Use% Mounted on
 /dev/md127      1.8T   28K  1.7T   1% /data/raid_2tb</span>
@@ -267,7 +267,7 @@ sudo hddmount mount --partition sdb1 --mountpoint /data/hdd1 --format --fstab
 sudo hddmount unmount --mountpoint /data/hdd1
 sudo hddmount format-disk --disk sdb --confirm sdb --mountpoint /data/hdd1 --fstab</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
-      <code>--format</code> 또는 <code>format-disk --mountpoint</code> 사용 시 표준 CMS 폴더 생성,
+      <code>--format</code> 또는 <code>format-disk --mountpoint</code> 사용 시 <code>uploads</code> 하위 표준 CMS 폴더 생성,
       <code>chmod -R 755</code>, <code>chown -R www-data:www-data</code>가 자동 실행됩니다.
       언마운트 대상이 busy이면 <code>fuser -ck</code> 후 재시도합니다.
     </p>
