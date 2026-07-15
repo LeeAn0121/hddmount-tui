@@ -30,23 +30,21 @@ jobs:
           gh release download --pattern '*.deb' --dir dist --clobber \
             $(gh release list --limit 1 --json tagName --jq '.[0].tagName')
 
-      - name: Checkout gh-pages branch
-        uses: actions/checkout@v4
-        with:
-          ref: gh-pages
-          path: repo
-          fetch-depth: 0
-        continue-on-error: true
-
-      - name: Initialize gh-pages branch if missing
+      - name: Checkout or create gh-pages branch
         run: |
-          if [ ! -d repo/.git ]; then
-            mkdir -p repo
-            cd repo
-            git init
-            git checkout -b gh-pages
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+          set -eu
+          mkdir -p repo
+          cd repo
+          git init -q
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          git fetch origin gh-pages 2>/dev/null || true
+          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+            git checkout -B gh-pages origin/gh-pages
+          else
+            git checkout --orphan gh-pages
+            git rm -rf . >/dev/null 2>&1 || true
           fi
 
       - name: Import GPG signing key
