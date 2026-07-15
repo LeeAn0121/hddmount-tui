@@ -1,14 +1,14 @@
 Package: hddmount-tui
-Version: 0.3.5
+Version: 0.3.6
 Architecture: amd64
 Maintainer: Koolsign <noreply@example.com>
 Installed-Size: 2960
 Recommends: parted, e2fsprogs, util-linux
-Filename: pool/main/hddmount-tui_0.3.5_amd64.deb
-Size: 1268866
-MD5sum: 29bfc82defba94aa32b9e353334152b8
-SHA1: 012451d92618fc10cdadb05cbb5bf7bd4483a158
-SHA256: d83a1d27b2b5fec719f7c7be04fc8ba4f0bb07d39b0dc03ba290cc786b505a12
+Filename: pool/main/hddmount-tui_0.3.6_amd64.deb
+Size: 1270522
+MD5sum: e0a8093cfeb0e4c4c5127c7c875450d7
+SHA1: 50eaf95c237c5534331d18cf0c21cee7e04f8118
+SHA256: 5f046596685d5d91c01f7ef43dc3869e9a6f412573cd2ef9ae6138d223f3c2ea
 Section: utils
 Priority: optional
 Homepage: https://github.com/koolsign/hddmount-tui
