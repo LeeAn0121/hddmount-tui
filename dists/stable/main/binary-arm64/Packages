@@ -1,0 +1,18 @@
+Package: hddmount-tui
+Version: 0.1.0
+Architecture: arm64
+Maintainer: Koolsign <noreply@example.com>
+Installed-Size: 2752
+Recommends: parted, e2fsprogs, util-linux
+Filename: pool/main/hddmount-tui_0.1.0_arm64.deb
+Size: 1086226
+MD5sum: 125c2728e17e2d36d3999692532d63a6
+SHA1: 07679b737d21c45c3e5c781754513f9e3b3f75db
+SHA256: 20f6e551a316c934a1bf461cc0627b9839cd1a1e618b04fe7cda8709be00946e
+Section: utils
+Priority: optional
+Homepage: https://github.com/koolsign/hddmount-tui
+Description: HDD를 안전하게 마운트하기 위한 TUI 도구.
+ 1TB/2TB/4TB/8TB 디스크 자동 감지, 파티션/포맷 이중 확인,
+ fstab 자동 등록 및 검증 기능을 제공합니다.
+
