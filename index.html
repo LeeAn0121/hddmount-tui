@@ -69,6 +69,30 @@
   a{color:var(--accent)}
 
   .scrollbox{overflow-x:auto}
+
+  /* terminal-window screen mockups */
+  .shots{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px}
+  .shots>div,.term{min-width:0}
+  .term{
+    background:#11141a;border:1px solid var(--border);border-radius:10px;overflow:hidden;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);
+  }
+  .term-bar{display:flex;align-items:center;gap:6px;padding:9px 12px;background:#181c24;border-bottom:1px solid #262b36}
+  .term-dot{width:10px;height:10px;border-radius:50%}
+  .term-dot.r{background:#ff5f57}.term-dot.y{background:#febc2e}.term-dot.g{background:#28c840}
+  .term-title{margin-left:8px;color:#8a91a3;font-size:12px;font-family:ui-monospace,Menlo,Consolas,monospace}
+  .term-body{
+    margin:0;padding:16px 18px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    font-size:12.5px;line-height:1.65;white-space:pre;overflow-x:auto;color:#d7dae2;background:#11141a;
+  }
+  .cap{color:var(--muted);font-size:0.85rem;margin:8px 2px 0}
+  .t-title{color:#5fb3ff;font-weight:700}
+  .t-cursor{color:#ff8fe0;font-weight:700}
+  .t-warn{color:#ffb454;font-weight:700}
+  .t-err{color:#ff5f5f;font-weight:700}
+  .t-ok{color:#3ddc97;font-weight:700}
+  .t-help,.t-muted{color:#7d8494}
+  .t-cursor-line{color:#ff8fe0}
 </style>
 </head>
 <body>
@@ -116,6 +140,83 @@
         <p>등록 전 자동 백업, <code>mount -a --fake</code> 문법 검증, 실패 시 자동 롤백으로 재부팅 사고 방지.</p>
       </div>
     </div>
+  </section>
+
+  <section>
+    <h2>화면 미리보기</h2>
+    <div class="shots">
+
+      <div>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">sudo hddmount</span></div>
+          <pre class="term-body"><span class="t-title">HDD 마운트 도구</span>
+
+감지된 디스크 목록 (시스템 루트 디스크는 제외됨)
+
+<span class="t-cursor-line">› /dev/sdb    2TB     ST2000DM008-2FR102              SMART=정상</span>
+  /dev/sdc    2TB     ST2000DM008-2FR102              SMART=정상
+  /dev/sdd    4TB     WDC WD40EFRX-68WT0N0             <span class="t-err">SMART=위험(FAILED)</span>
+
+<span class="t-help">↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   q: 종료</span></pre>
+        </div>
+        <p class="cap">디스크 목록 — 용량별 자동 분류 + SMART 헬스 한눈에 확인</p>
+      </div>
+
+      <div>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">RAID 구성</span></div>
+          <pre class="term-body"><span class="t-title">RAID 구성 - 디스크 선택</span>
+
+동일 용량(2TB) 디스크 3개 감지됨. RAID에 포함할 디스크를 선택하세요.
+
+<span class="t-cursor-line">› [x] /dev/sdb    2TB     ST2000DM008-2FR102</span>
+  [x] /dev/sdc    2TB     ST2000DM008-2FR102
+  [ ] /dev/sdd    2TB     ST2000DM008-2FR102
+
+<span class="t-help">↑/↓: 이동   space: 선택/해제   a: 전체선택   enter: 다음   b: 뒤로   q: 종료</span></pre>
+        </div>
+        <p class="cap">RAID 구성 — 동일 용량 디스크를 골라 RAID1/RAID10 배열 생성</p>
+      </div>
+
+      <div>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">확인</span></div>
+          <pre class="term-body">확인
+
+<span class="t-err">!! 경고 !!</span>
+<span class="t-warn">2TB 디스크 2개(/dev/sdb, /dev/sdc)를 RAID1 배열로 구성합니다.
+해당 디스크들의 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다.</span>
+
+계속하려면 아래 장치 목록을 정확히 입력하세요: sdb,sdc
+
+  sdb,sdc<span class="t-cursor">▏</span>
+
+<span class="t-help">enter: 확인   esc: 취소</span></pre>
+        </div>
+        <p class="cap">파괴적 작업은 장치 경로 재입력으로 이중 확인 — 오타 한 번의 실수 방지</p>
+      </div>
+
+      <div>
+        <div class="term">
+          <div class="term-bar"><span class="term-dot r"></span><span class="term-dot y"></span><span class="term-dot g"></span><span class="term-title">완료</span></div>
+          <pre class="term-body"><span class="t-ok">완료되었습니다!</span>
+
+파티션: /dev/md/raid1_48213
+마운트 포인트: /data/raid_2tb
+fstab: 등록됨 (재부팅 시 자동 마운트)
+
+<span class="t-muted">Filesystem      Size  Used Avail Use% Mounted on
+/dev/md127      1.8T   28K  1.7T   1% /data/raid_2tb</span>
+
+<span class="t-help">r: 다른 디스크 마운트   q: 종료</span></pre>
+        </div>
+        <p class="cap">완료 화면 — 마운트 결과와 df -h 요약을 바로 확인</p>
+      </div>
+
+    </div>
+    <p style="color:var(--muted);font-size:0.82rem;margin-top:14px">
+      실제 터미널 색상을 그대로 재현한 목업이며, 표시되는 디스크/경로는 예시입니다.
+    </p>
   </section>
 
   <section id="install">
