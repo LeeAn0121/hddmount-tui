@@ -62,7 +62,4 @@ changelog:
       - "^test:"
 
 release:
-  github:
-    owner: koolsign
-    name: hddmount-tui
   draft: false
