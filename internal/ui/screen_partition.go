@@ -67,6 +67,7 @@ func (m *Model) updatePartitionChoice(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.mountPoint = ""
+		m.prepareMountTree = false
 		resetTextInput(m, "/data/hdd_"+strings.ToLower(m.selectedDisk.Label))
 		m.screen = scrMountPoint
 		return m, nil

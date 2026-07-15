@@ -184,6 +184,17 @@ func cliMount(args []string) int {
 	}
 	fmt.Printf("마운트 완료: %s -> %s\n", part, *mountPoint)
 
+	if *format {
+		out, err := diskutil.PrepareContentTree(*mountPoint)
+		diskutil.LogEvent("cli-prepare-content-tree", *mountPoint, out, err)
+		if out != "" {
+			fmt.Println(out)
+		}
+		if err != nil {
+			return fail("%v", err)
+		}
+	}
+
 	if *fstab {
 		out, err := diskutil.SetupFstab(part, *mountPoint)
 		diskutil.LogEvent("cli-fstab", part, out, err)
@@ -278,6 +289,15 @@ func cliFormatDisk(args []string) int {
 		return fail("%v", err)
 	}
 	fmt.Printf("마운트 완료: %s -> %s\n", part, *mountPoint)
+
+	out, err = diskutil.PrepareContentTree(*mountPoint)
+	diskutil.LogEvent("cli-prepare-content-tree", *mountPoint, out, err)
+	if out != "" {
+		fmt.Println(out)
+	}
+	if err != nil {
+		return fail("%v", err)
+	}
 
 	if *fstab {
 		out, err := diskutil.SetupFstab(part, *mountPoint)

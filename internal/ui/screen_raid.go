@@ -215,6 +215,7 @@ func (m *Model) submitRaidConfirm(value string) (tea.Model, tea.Cmd) {
 
 	devs := append([]string(nil), m.raidDevs...)
 	level := m.raidLevel
+	m.prepareMountTree = true
 	m.raidName = fmt.Sprintf("raid%d_%d", level, time.Now().Unix()%100000)
 	name := m.raidName
 

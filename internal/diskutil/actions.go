@@ -82,6 +82,48 @@ func MountPartition(part, mountPoint string) (string, error) {
 	return runCmd("mount", part, mountPoint)
 }
 
+var contentDirs = []string{
+	"contents",
+	"csv",
+	"log",
+	"monitor",
+	"photo",
+	"rrd",
+	"template",
+}
+
+// PrepareContentTree creates the standard CMS directory layout on a freshly
+// formatted and mounted filesystem, then normalizes ownership and permissions.
+func PrepareContentTree(mountPoint string) (string, error) {
+	var logs []string
+	for _, name := range contentDirs {
+		if err := os.MkdirAll(mountPoint+"/"+name, 0o755); err != nil {
+			return strings.Join(logs, "\n"), fmt.Errorf("%s 디렉터리 생성 실패: %w", name, err)
+		}
+		logs = append(logs, "디렉터리 생성: "+mountPoint+"/"+name)
+	}
+
+	out, err := runCmd("chmod", "-R", "755", mountPoint)
+	if out != "" {
+		logs = append(logs, out)
+	}
+	if err != nil {
+		return strings.Join(logs, "\n"), fmt.Errorf("권한 설정 실패: %w", err)
+	}
+	logs = append(logs, "chmod -R 755 완료: "+mountPoint)
+
+	out, err = runCmd("chown", "-R", "www-data:www-data", mountPoint)
+	if out != "" {
+		logs = append(logs, out)
+	}
+	if err != nil {
+		return strings.Join(logs, "\n"), fmt.Errorf("소유자 설정 실패: %w", err)
+	}
+	logs = append(logs, "chown -R www-data:www-data 완료: "+mountPoint)
+
+	return strings.Join(logs, "\n"), nil
+}
+
 // IsMountpoint reports whether path is currently a mount point.
 func IsMountpoint(path string) bool {
 	return exec.Command("mountpoint", "-q", path).Run() == nil
@@ -162,9 +204,37 @@ func DiskFree(path string) (string, error) {
 	return runCmd("df", "-h", path)
 }
 
-// Unmount detaches a mounted partition or path.
+// Unmount detaches a mounted partition or path. If the target is busy, it
+// kills holders with `fuser -ck` and retries once.
 func Unmount(path string) (string, error) {
-	return runCmd("umount", path)
+	out, err := runCmd("umount", path)
+	if err == nil || !isBusyUnmount(out, err) {
+		return out, err
+	}
+
+	logs := []string{out, "target is busy 감지: fuser -ck 실행 후 재시도합니다."}
+	fuserOut, fuserErr := runCmd("fuser", "-ck", path)
+	if fuserOut != "" {
+		logs = append(logs, fuserOut)
+	}
+	if fuserErr != nil {
+		logs = append(logs, "fuser -ck 오류: "+fuserErr.Error())
+	}
+
+	retryOut, retryErr := runCmd("umount", path)
+	if retryOut != "" {
+		logs = append(logs, retryOut)
+	}
+	if retryErr != nil {
+		return strings.Join(logs, "\n"), retryErr
+	}
+	logs = append(logs, "마운트 해제 재시도 성공")
+	return strings.Join(logs, "\n"), nil
+}
+
+func isBusyUnmount(out string, err error) bool {
+	text := strings.ToLower(out + " " + err.Error())
+	return strings.Contains(text, "busy") || strings.Contains(text, "사용 중")
 }
 
 // SetLabel sets the ext4 filesystem label on a partition, so `lsblk -o LABEL`

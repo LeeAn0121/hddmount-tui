@@ -76,8 +76,9 @@ type Model struct {
 	confirmMsg  string
 
 	// mount point
-	mountPoint string
-	mountWarn  string
+	mountPoint       string
+	mountWarn        string
+	prepareMountTree bool
 
 	fstabChoice bool
 
