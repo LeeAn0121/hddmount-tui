@@ -99,11 +99,9 @@ func (m *Model) confirmYesNo(yes bool) (tea.Model, tea.Cmd) {
 			{label: "마운트", target: m.selectedPartPath, run: func() (string, error) {
 				return diskutil.MountPartition(m.selectedPartPath, m.mountPoint)
 			}},
-		}
-		if m.prepareMountTree {
-			steps = append(steps, step{label: "표준 폴더/권한 설정", target: m.mountPoint, run: func() (string, error) {
+			{label: "표준 폴더/권한 설정", target: m.mountPoint, run: func() (string, error) {
 				return diskutil.PrepareContentTree(m.mountPoint)
-			}})
+			}},
 		}
 		if m.fstabChoice {
 			steps = append(steps, step{label: "fstab 등록", target: m.mountPoint, run: func() (string, error) {
@@ -184,7 +182,6 @@ func (m *Model) submitTextInput() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		dev := m.selectedDisk.DevPath()
-		m.prepareMountTree = true
 		steps := []step{
 			{label: "기존 서명 제거", target: dev, run: func() (string, error) { return diskutil.WipeSignatures(dev) }},
 			{label: "GPT 파티션 생성", target: dev, run: func() (string, error) { return diskutil.CreatePartitionTable(dev) }},
@@ -201,7 +198,6 @@ func (m *Model) submitTextInput() (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		part := m.selectedPartPath
-		m.prepareMountTree = true
 		steps := []step{
 			{label: "ext4 포맷", target: part, run: func() (string, error) { return diskutil.FormatExt4(part) }},
 		}

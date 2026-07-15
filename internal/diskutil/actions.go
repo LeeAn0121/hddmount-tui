@@ -92,8 +92,8 @@ var contentDirs = []string{
 	"template",
 }
 
-// PrepareContentTree creates the standard CMS directory layout on a freshly
-// formatted and mounted filesystem, then normalizes ownership and permissions.
+// PrepareContentTree creates the standard CMS directory layout on a mounted
+// filesystem, then normalizes ownership and permissions.
 func PrepareContentTree(mountPoint string) (string, error) {
 	var logs []string
 	uploadsPath := mountPoint + "/uploads"
