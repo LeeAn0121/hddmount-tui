@@ -34,4 +34,6 @@ jobs:
   publish-apt-repo:
     needs: goreleaser
     uses: ./.github/workflows/apt-repo.yml
+    with:
+      release_tag: ${{ github.ref_name }}
     secrets: inherit

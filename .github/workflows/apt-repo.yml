@@ -2,10 +2,21 @@ name: publish-apt-repo
 
 on:
   workflow_call:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag to publish into the APT repository"
+        required: true
+        type: string
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "GitHub Release tag to publish into the APT repository"
+        required: true
+        type: string
 
 permissions:
   contents: write
+  pages: write
 
 env:
   REPO_COMPONENT: main
@@ -22,13 +33,13 @@ jobs:
       - name: Install repo tooling
         run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg
 
-      - name: Download latest release .deb files
+      - name: Download release .deb files
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           mkdir -p dist
-          gh release download --pattern '*.deb' --dir dist --clobber \
-            $(gh release list --limit 1 --json tagName --jq '.[0].tagName')
+          gh release download "${RELEASE_TAG}" --pattern '*.deb' --dir dist --clobber
 
       - name: Checkout or create gh-pages branch
         run: |
