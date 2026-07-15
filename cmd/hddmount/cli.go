@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path"
 	"strings"
 
 	"github.com/koolsign/hddmount-tui/internal/diskutil"
@@ -150,14 +151,15 @@ func cliMount(args []string) int {
 	fstab := fs.Bool("fstab", false, "/etc/fstab 에 등록")
 	fs.Parse(args)
 
+	mp := path.Clean(*mountPoint)
 	if *partition == "" || *mountPoint == "" {
 		return fail("--partition 과 --mountpoint 를 모두 지정하세요")
 	}
-	if !strings.HasPrefix(*mountPoint, "/") {
+	if !strings.HasPrefix(mp, "/") {
 		return fail("마운트 경로는 절대경로여야 합니다")
 	}
-	if diskutil.IsDangerousMountpoint(*mountPoint) {
-		return fail("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다", *mountPoint)
+	if diskutil.IsDangerousMountpoint(mp) {
+		return fail("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다", mp)
 	}
 
 	part := *partition
@@ -174,18 +176,18 @@ func cliMount(args []string) int {
 		}
 	}
 
-	out, err := diskutil.MountPartition(part, *mountPoint)
-	diskutil.LogEvent("cli-mount", part+" -> "+*mountPoint, out, err)
+	out, err := diskutil.MountPartition(part, mp)
+	diskutil.LogEvent("cli-mount", part+" -> "+mp, out, err)
 	if out != "" {
 		fmt.Println(out)
 	}
 	if err != nil {
 		return fail("%v", err)
 	}
-	fmt.Printf("마운트 완료: %s -> %s\n", part, *mountPoint)
+	fmt.Printf("마운트 완료: %s -> %s\n", part, mp)
 
-	out, err = diskutil.PrepareContentTree(*mountPoint)
-	diskutil.LogEvent("cli-prepare-content-tree", *mountPoint, out, err)
+	out, err = diskutil.PrepareContentTree(mp)
+	diskutil.LogEvent("cli-prepare-content-tree", mp, out, err)
 	if out != "" {
 		fmt.Println(out)
 	}
@@ -194,7 +196,7 @@ func cliMount(args []string) int {
 	}
 
 	if *fstab {
-		out, err := diskutil.SetupFstab(part, *mountPoint)
+		out, err := diskutil.SetupFstab(part, mp)
 		diskutil.LogEvent("cli-fstab", part, out, err)
 		if out != "" {
 			fmt.Println(out)
@@ -275,21 +277,25 @@ func cliFormatDisk(args []string) int {
 	if *mountPoint == "" {
 		return 0
 	}
-	if diskutil.IsDangerousMountpoint(*mountPoint) {
-		return fail("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다", *mountPoint)
+	mp := path.Clean(*mountPoint)
+	if !strings.HasPrefix(mp, "/") {
+		return fail("마운트 경로는 절대경로여야 합니다")
 	}
-	out, err = diskutil.MountPartition(part, *mountPoint)
-	diskutil.LogEvent("cli-mount", part+" -> "+*mountPoint, out, err)
+	if diskutil.IsDangerousMountpoint(mp) {
+		return fail("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다", mp)
+	}
+	out, err = diskutil.MountPartition(part, mp)
+	diskutil.LogEvent("cli-mount", part+" -> "+mp, out, err)
 	if out != "" {
 		fmt.Println(out)
 	}
 	if err != nil {
 		return fail("%v", err)
 	}
-	fmt.Printf("마운트 완료: %s -> %s\n", part, *mountPoint)
+	fmt.Printf("마운트 완료: %s -> %s\n", part, mp)
 
-	out, err = diskutil.PrepareContentTree(*mountPoint)
-	diskutil.LogEvent("cli-prepare-content-tree", *mountPoint, out, err)
+	out, err = diskutil.PrepareContentTree(mp)
+	diskutil.LogEvent("cli-prepare-content-tree", mp, out, err)
 	if out != "" {
 		fmt.Println(out)
 	}
@@ -298,7 +304,7 @@ func cliFormatDisk(args []string) int {
 	}
 
 	if *fstab {
-		out, err := diskutil.SetupFstab(part, *mountPoint)
+		out, err := diskutil.SetupFstab(part, mp)
 		diskutil.LogEvent("cli-fstab", part, out, err)
 		if out != "" {
 			fmt.Println(out)

@@ -5,6 +5,7 @@ package diskutil
 import (
 	"fmt"
 	"os/exec"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -153,9 +154,8 @@ func GetPartitions(diskName string) ([]Partition, error) {
 	return parts, nil
 }
 
-// DangerousMountpoints lists top-level system paths that must never be used
-// as a mount point, to prevent a mis-click from burying /etc, /boot, etc.
-// under a freshly mounted (and likely empty) disk.
+// DangerousMountpoints lists system paths that must never be used as a mount
+// point. Custom top-level data paths such as /data are intentionally allowed.
 var DangerousMountpoints = []string{
 	"/", "/bin", "/boot", "/dev", "/etc", "/lib", "/lib32", "/lib64",
 	"/libx32", "/proc", "/root", "/run", "/sbin", "/srv", "/sys",
@@ -163,9 +163,10 @@ var DangerousMountpoints = []string{
 }
 
 // IsDangerousMountpoint reports whether path is a protected system directory.
-func IsDangerousMountpoint(path string) bool {
+func IsDangerousMountpoint(mountPoint string) bool {
+	cleaned := path.Clean(mountPoint)
 	for _, d := range DangerousMountpoints {
-		if path == d {
+		if cleaned == d {
 			return true
 		}
 	}

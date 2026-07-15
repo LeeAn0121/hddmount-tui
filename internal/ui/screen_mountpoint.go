@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"path"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -13,6 +14,7 @@ import (
 // we can move straight to the fstab question or need an extra confirmation
 // for something unusual (already a mount point, or a non-empty directory).
 func (m *Model) submitMountPoint(value string) (tea.Model, tea.Cmd) {
+	value = path.Clean(value)
 	if value == "" {
 		m.inputErr = "경로를 입력해주세요."
 		return m, nil
@@ -22,7 +24,7 @@ func (m *Model) submitMountPoint(value string) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 	if diskutil.IsDangerousMountpoint(value) {
-		m.inputErr = fmt.Sprintf("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다. 하위 경로를 지정해주세요 (예: /mnt%s, /data%s).", value, value, value)
+		m.inputErr = fmt.Sprintf("시스템 핵심 경로(%s)는 마운트 포인트로 사용할 수 없습니다. /data 같은 운영용 데이터 경로를 지정해주세요.", value)
 		return m, nil
 	}
 
@@ -48,8 +50,8 @@ func (m *Model) submitMountPoint(value string) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) viewMountPoint() string {
-	prompt := "마운트 포인트 경로를 입력하세요 (예: /data/hdd_1tb)\n" +
+	prompt := "마운트 포인트 경로를 입력하세요 (예: /data 또는 /data/hdd_1tb)\n" +
 		subtleStyle.Render(fmt.Sprintf("대상 파티션: %s", m.selectedPartPath)) + "\n" +
-		subtleStyle.Render("/, /etc, /boot, /var, /home 등 시스템 핵심 경로는 사용할 수 없습니다.")
+		subtleStyle.Render("/ 자체와 /etc, /boot 등 시스템 핵심 경로는 사용할 수 없습니다. /data 같은 운영용 최상위 경로는 사용할 수 있습니다.")
 	return m.viewTextInput(prompt)
 }
