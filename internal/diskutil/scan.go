@@ -13,10 +13,11 @@ import (
 
 // Disk represents one whole block device (e.g. /dev/sdb).
 type Disk struct {
-	Name  string // "sdb"
-	Size  int64  // bytes
-	Model string
-	Label string // "1TB" / "2TB" / "4TB" / "8TB" / "기타(...)"
+	Name       string // "sdb"
+	Size       int64  // bytes
+	Model      string
+	Label      string // "1TB" / "2TB" / "4TB" / "8TB" / "기타(...)"
+	SmartState string // "정상" / "위험(FAILED)" / "확인불가"
 }
 
 // Partition represents one partition that belongs to a Disk.
@@ -115,10 +116,11 @@ func ListDisks() ([]Disk, error) {
 			model = "알수없음"
 		}
 		disks = append(disks, Disk{
-			Name:  kv["NAME"],
-			Size:  size,
-			Model: model,
-			Label: ClassifySize(size),
+			Name:       kv["NAME"],
+			Size:       size,
+			Model:      model,
+			Label:      ClassifySize(size),
+			SmartState: SmartHealth("/dev/" + kv["NAME"]),
 		})
 	}
 	sort.Slice(disks, func(i, j int) bool { return disks[i].Name < disks[j].Name })

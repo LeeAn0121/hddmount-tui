@@ -25,6 +25,10 @@ func (m *Model) updateDiskList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.selectedDisk = m.disks[m.diskCur]
 		m.screen = scrLoadingPartitions
 		return m, loadPartitionsCmd(m.selectedDisk.Name)
+	case "s":
+		m.selectedDisk = m.disks[m.diskCur]
+		m.screen = scrLoadingSmart
+		return m, tea.Batch(m.spin.Tick, loadSmartCmd(m.selectedDisk.DevPath()))
 	case "q", "esc":
 		m.quitting = true
 		return m, tea.Quit
@@ -48,7 +52,10 @@ func (m *Model) viewDiskList() string {
 	b.WriteString("감지된 디스크 목록 (시스템 루트 디스크는 제외됨)\n\n")
 
 	for i, d := range m.disks {
-		line := fmt.Sprintf("%-10s  %-6s  %-30s", d.DevPath(), d.Label, d.Model)
+		line := fmt.Sprintf("%-10s  %-6s  %-30s  SMART=%s", d.DevPath(), d.Label, d.Model, d.SmartState)
+		if d.SmartState == "위험(FAILED)" {
+			line = errorStyle.Render(line)
+		}
 		if i == m.diskCur {
 			b.WriteString(cursorStyle.Render("› " + line))
 		} else {
@@ -57,6 +64,6 @@ func (m *Model) viewDiskList() string {
 		b.WriteString("\n")
 	}
 
-	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   q: 종료"))
+	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   s: SMART 상세   q: 종료"))
 	return boxStyle.Render(b.String())
 }

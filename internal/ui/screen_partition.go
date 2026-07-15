@@ -34,6 +34,17 @@ func (m *Model) updatePartitionChoice(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case "q":
 		m.quitting = true
 		return m, tea.Quit
+	case "u":
+		m.partErr = ""
+		if m.partCur < len(m.parts) && m.parts[m.partCur].IsMounted() {
+			p := m.parts[m.partCur]
+			m.unmountTargetPath = p.DevPath()
+			m.yesNoCursor = 1
+			m.screen = scrUnmountConfirm
+			return m, nil
+		}
+		m.partErr = "마운트 해제할 수 있는 파티션이 아닙니다 (선택한 파티션이 마운트되어 있지 않습니다)."
+		return m, nil
 	case "enter":
 		m.partErr = ""
 		if m.partCur == len(m.parts) {
@@ -102,6 +113,6 @@ func (m *Model) viewPartitionChoice() string {
 		b.WriteString("\n" + errorStyle.Render(m.partErr) + "\n")
 	}
 
-	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   b: 뒤로   q: 종료"))
+	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   u: 마운트 해제   b: 뒤로   q: 종료"))
 	return boxStyle.Render(b.String())
 }

@@ -28,16 +28,20 @@ const (
 	scrMountPoint
 	scrMountPointWarnConfirm
 	scrFstabConfirm
+	scrUnmountConfirm
 	scrRunning
 	scrRunError
 	scrSummary
 	scrFatalError
+	scrLoadingSmart
+	scrSmartDetail
 )
 
 // step is one unit of work executed sequentially on the scrRunning screen.
 type step struct {
-	label string
-	run   func() (string, error)
+	label  string
+	target string // device/path this step acts on, recorded in the operations log
+	run    func() (string, error)
 }
 
 // Model is the top-level Bubbletea model for the whole wizard.
@@ -74,6 +78,13 @@ type Model struct {
 
 	fstabChoice bool
 
+	// unmount
+	unmountTargetPath string
+
+	// SMART detail view
+	smartOutput string
+	smartErr    error
+
 	// running screen
 	spin         spinner.Model
 	runLog       []string
@@ -101,6 +112,11 @@ type partitionsLoadedMsg struct {
 type stepResultMsg struct {
 	log string
 	err error
+}
+
+type smartLoadedMsg struct {
+	output string
+	err    error
 }
 
 // ---- constructors ----
@@ -143,7 +159,15 @@ func loadPartitionsCmd(diskName string) tea.Cmd {
 func runStepCmd(s step) tea.Cmd {
 	return func() tea.Msg {
 		log, err := s.run()
+		diskutil.LogEvent(s.label, s.target, log, err)
 		return stepResultMsg{log: log, err: err}
+	}
+}
+
+func loadSmartCmd(dev string) tea.Cmd {
+	return func() tea.Msg {
+		out, err := diskutil.SmartDetail(dev)
+		return smartLoadedMsg{output: out, err: err}
 	}
 }
 
@@ -187,7 +211,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case spinner.TickMsg:
-		if m.screen == scrRunning {
+		if m.screen == scrRunning || m.screen == scrLoadingSmart {
 			var cmd tea.Cmd
 			m.spin, cmd = m.spin.Update(msg)
 			return m, cmd
@@ -196,6 +220,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case stepResultMsg:
 		return m.handleStepResult(msg)
+
+	case smartLoadedMsg:
+		m.smartOutput = msg.output
+		m.smartErr = msg.err
+		m.screen = scrSmartDetail
+		return m, nil
 	}
 
 	switch m.screen {
@@ -205,11 +235,11 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateNoDisks(msg)
 	case scrPartitionChoice:
 		return m.updatePartitionChoice(msg)
-	case scrFormatAllConfirm, scrNoFSConfirm, scrMountPointWarnConfirm, scrFstabConfirm:
+	case scrFormatAllConfirm, scrNoFSConfirm, scrMountPointWarnConfirm, scrFstabConfirm, scrUnmountConfirm:
 		return m.updateYesNo(msg)
 	case scrFormatAllDeviceType, scrFormatAllFinalYes, scrNoFSDeviceType, scrMountPoint:
 		return m.updateTextInput(msg)
-	case scrRunError, scrSummary, scrFatalError:
+	case scrRunError, scrSummary, scrFatalError, scrSmartDetail:
 		return m.updateTerminalScreen(msg)
 	}
 
@@ -253,6 +283,12 @@ func (m *Model) View() string {
 		return m.viewYesNo(warnStyle.Render(m.mountWarn) + "\n계속할까요?")
 	case scrFstabConfirm:
 		return m.viewYesNo("재부팅 시 자동 마운트되도록 /etc/fstab 에 등록할까요?")
+	case scrUnmountConfirm:
+		return m.viewYesNo(warnStyle.Render(fmt.Sprintf("%s 마운트를 해제할까요?", m.unmountTargetPath)))
+	case scrLoadingSmart:
+		return boxStyle.Render(fmt.Sprintf("%s SMART 정보를 읽는 중...", m.spin.View()))
+	case scrSmartDetail:
+		return m.viewSmartDetail()
 	case scrRunning:
 		return m.viewRunning()
 	case scrRunError:
@@ -292,6 +328,10 @@ func (m *Model) handleStepResult(msg stepResultMsg) (tea.Model, tea.Cmd) {
 		m.pendingSteps = m.pendingSteps[1:]
 	}
 	if len(m.pendingSteps) == 0 {
+		if m.afterRun == scrLoadingPartitions {
+			m.screen = scrLoadingPartitions
+			return m, loadPartitionsCmd(m.selectedDisk.Name)
+		}
 		m.screen = m.afterRun
 		if m.afterRun == scrSummary {
 			out, _ := diskutil.DiskFree(m.mountPoint)

@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -69,15 +70,38 @@ func (m *Model) confirmYesNo(yes bool) (tea.Model, tea.Cmd) {
 		m.screen = scrFstabConfirm
 		return m, nil
 
+	case scrUnmountConfirm:
+		if !yes {
+			m.screen = scrPartitionChoice
+			return m, nil
+		}
+		target := m.unmountTargetPath
+		steps := []step{
+			{label: "마운트 해제", target: target, run: func() (string, error) {
+				return diskutil.Unmount(target)
+			}},
+		}
+		return m.startRun(steps, scrLoadingPartitions)
+
 	case scrFstabConfirm:
 		m.fstabChoice = yes
+		label := diskutil.SanitizeLabel(filepath.Base(m.mountPoint))
 		steps := []step{
-			{label: "마운트", run: func() (string, error) {
+			{label: "라벨 설정", target: m.selectedPartPath, run: func() (string, error) {
+				// Best-effort: not every filesystem/driver supports e2label,
+				// so a failure here shouldn't abort the mount.
+				out, err := diskutil.SetLabel(m.selectedPartPath, label)
+				if err != nil {
+					return "라벨 설정 건너뜀: " + err.Error(), nil
+				}
+				return out, nil
+			}},
+			{label: "마운트", target: m.selectedPartPath, run: func() (string, error) {
 				return diskutil.MountPartition(m.selectedPartPath, m.mountPoint)
 			}},
 		}
 		if m.fstabChoice {
-			steps = append(steps, step{label: "fstab 등록", run: func() (string, error) {
+			steps = append(steps, step{label: "fstab 등록", target: m.mountPoint, run: func() (string, error) {
 				return diskutil.SetupFstab(m.selectedPartPath, m.mountPoint)
 			}})
 		}
@@ -154,9 +178,9 @@ func (m *Model) submitTextInput() (tea.Model, tea.Cmd) {
 		}
 		dev := m.selectedDisk.DevPath()
 		steps := []step{
-			{label: "기존 서명 제거", run: func() (string, error) { return diskutil.WipeSignatures(dev) }},
-			{label: "GPT 파티션 생성", run: func() (string, error) { return diskutil.CreatePartitionTable(dev) }},
-			{label: "ext4 포맷", run: func() (string, error) {
+			{label: "기존 서명 제거", target: dev, run: func() (string, error) { return diskutil.WipeSignatures(dev) }},
+			{label: "GPT 파티션 생성", target: dev, run: func() (string, error) { return diskutil.CreatePartitionTable(dev) }},
+			{label: "ext4 포맷", target: dev, run: func() (string, error) {
 				m.selectedPartPath = diskutil.NewPartitionPath(dev)
 				return diskutil.FormatExt4(m.selectedPartPath)
 			}},
@@ -170,7 +194,7 @@ func (m *Model) submitTextInput() (tea.Model, tea.Cmd) {
 		}
 		part := m.selectedPartPath
 		steps := []step{
-			{label: "ext4 포맷", run: func() (string, error) { return diskutil.FormatExt4(part) }},
+			{label: "ext4 포맷", target: part, run: func() (string, error) { return diskutil.FormatExt4(part) }},
 		}
 		return m.startRun(steps, scrMountPoint)
 

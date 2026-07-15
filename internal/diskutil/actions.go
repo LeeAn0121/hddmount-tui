@@ -1,9 +1,11 @@
 package diskutil
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -158,4 +160,67 @@ func SetupFstab(part, mountPoint string) (string, error) {
 // DiskFree returns `df -h` output for a mounted path, for the final summary screen.
 func DiskFree(path string) (string, error) {
 	return runCmd("df", "-h", path)
+}
+
+// Unmount detaches a mounted partition or path.
+func Unmount(path string) (string, error) {
+	return runCmd("umount", path)
+}
+
+// SetLabel sets the ext4 filesystem label on a partition, so `lsblk -o LABEL`
+// / `blkid` and the disk's physical sticker can agree on a human-readable
+// name instead of just a size bucket.
+func SetLabel(part, label string) (string, error) {
+	return runCmd("e2label", part, label)
+}
+
+var labelSanitizeRe = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
+
+// SanitizeLabel reduces s to the character set and length (16 bytes) that
+// ext2/3/4 filesystem labels accept.
+func SanitizeLabel(s string) string {
+	s = labelSanitizeRe.ReplaceAllString(s, "_")
+	s = strings.Trim(s, "_")
+	if len(s) > 16 {
+		s = s[:16]
+	}
+	if s == "" {
+		s = "hdd"
+	}
+	return s
+}
+
+// SmartHealth runs a quick `smartctl -H` health check on a whole-disk device
+// and reduces it to a short verdict. smartctl's exit code is a bitmask that
+// is nonzero even when the check itself succeeds but flags a problem, so the
+// verdict is derived from the output text rather than the error. A missing
+// smartctl binary, USB bridges that don't pass SMART through, or any other
+// failure to get a clear answer all fall back to "확인불가" rather than
+// blocking the rest of the tool.
+func SmartHealth(dev string) string {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, "smartctl", "-H", dev).CombinedOutput()
+	text := string(out)
+	switch {
+	case strings.Contains(text, "FAILED"):
+		return "위험(FAILED)"
+	case strings.Contains(text, "PASSED") || strings.Contains(text, "OK"):
+		return "정상"
+	default:
+		return "확인불가"
+	}
+}
+
+// SmartDetail returns the full `smartctl -a` report for a disk, for a
+// detail screen the user can drill into from the disk list.
+func SmartDetail(dev string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "smartctl", "-a", dev).CombinedOutput()
+	text := strings.TrimSpace(string(out))
+	if text == "" && err != nil {
+		return "", fmt.Errorf("smartctl 실행 실패 (smartmontools 설치 여부를 확인하세요): %w", err)
+	}
+	return text, nil
 }

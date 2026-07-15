@@ -11,6 +11,17 @@ func (m *Model) updateTerminalScreen(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
+	if m.screen == scrSmartDetail {
+		switch keyMsg.String() {
+		case "b", "esc", "enter":
+			m.screen = scrDiskList
+			return m, nil
+		case "q", "ctrl+c":
+			m.quitting = true
+			return m, tea.Quit
+		}
+		return m, nil
+	}
 	switch keyMsg.String() {
 	case "q", "esc", "ctrl+c":
 		m.quitting = true

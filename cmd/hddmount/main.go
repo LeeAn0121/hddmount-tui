@@ -11,6 +11,18 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && cliSubcommands[os.Args[1]] {
+		if os.Geteuid() != 0 {
+			fmt.Fprintln(os.Stderr, "이 프로그램은 root 권한이 필요합니다. sudo hddmount 로 실행해주세요.")
+			os.Exit(1)
+		}
+		os.Exit(runCLI(os.Args[1], os.Args[2:]))
+	}
+	if len(os.Args) > 1 && (os.Args[1] == "-h" || os.Args[1] == "--help" || os.Args[1] == "help") {
+		printCLIUsage()
+		return
+	}
+
 	if os.Geteuid() != 0 {
 		fmt.Fprintln(os.Stderr, "이 프로그램은 root 권한이 필요합니다. sudo hddmount 로 실행해주세요.")
 		os.Exit(1)
