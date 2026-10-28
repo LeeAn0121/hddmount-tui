@@ -102,6 +102,14 @@ func (m *Model) confirmYesNo(yes bool) (tea.Model, tea.Cmd) {
 			{label: "표준 폴더/권한 설정", target: m.mountPoint, run: func() (string, error) {
 				return diskutil.PrepareContentTree(m.mountPoint)
 			}},
+			{label: "업로드 경로 링크", target: "/var/www/html", run: func() (string, error) {
+				// Best-effort: CMS 가 없는 서버에서도 마운트 작업은 끝나야 한다.
+				out, err := diskutil.LinkWebUploads()
+				if err != nil {
+					return "업로드 링크 건너뜀: " + err.Error(), nil
+				}
+				return out, nil
+			}},
 		}
 		if m.fstabChoice {
 			steps = append(steps, step{label: "fstab 등록", target: m.mountPoint, run: func() (string, error) {

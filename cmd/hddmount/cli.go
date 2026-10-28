@@ -195,6 +195,8 @@ func cliMount(args []string) int {
 		return fail("%v", err)
 	}
 
+	linkWebUploads()
+
 	if *fstab {
 		out, err := diskutil.SetupFstab(part, mp)
 		diskutil.LogEvent("cli-fstab", part, out, err)
@@ -206,6 +208,20 @@ func cliMount(args []string) int {
 		}
 	}
 	return 0
+}
+
+// linkWebUploads connects the CMS upload paths and prints the result.
+//
+// 실패해도 마운트 자체는 끝났으므로 종료 코드를 바꾸지 않는다.
+func linkWebUploads() {
+	out, err := diskutil.LinkWebUploads()
+	diskutil.LogEvent("cli-link-web-uploads", "/var/www/html", out, err)
+	if out != "" {
+		fmt.Println(out)
+	}
+	if err != nil {
+		fmt.Println("업로드 링크 건너뜀: " + err.Error())
+	}
 }
 
 func cliUnmount(args []string) int {
@@ -302,6 +318,8 @@ func cliFormatDisk(args []string) int {
 	if err != nil {
 		return fail("%v", err)
 	}
+
+	linkWebUploads()
 
 	if *fstab {
 		out, err := diskutil.SetupFstab(part, mp)

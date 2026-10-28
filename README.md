@@ -20,6 +20,7 @@ Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구�
 - 디스크 목록에서 SMART 상태를 바로 확인(`s`), 상세 리포트(`smartctl -a`) 조회 가능
 - 마운트된 파티션을 마운트 위저드 없이 바로 해제(`u`)
 - 마운트 시 마운트 포인트 이름을 딴 ext4 라벨 자동 설정
+- CMS 업로드 경로 심볼릭 링크 자동 생성. `/data/uploads` 가 있으면 `/var/www/html/uploads` 와 `/var/www/html/public/uploads` 를 모두 연결하고, 없으면 `/var/www/html/uploads` 를 실제 경로로 두고 `/var/www/html/public/uploads` 만 연결
 - `/var/log/hddmount.log` 에 모든 마운트/언마운트/포맷 작업 기록 (운영 감사용)
 - 동일 용량 디스크 여러 개로 mdadm RAID1 / RAID10 배열 구성(`R`)
 - 자동화용 비대화형 CLI 서브커맨드 (`list`/`parts`/`smart`/`mount`/`unmount`/`format-disk`)
