@@ -27,9 +27,10 @@ def download(url, destination):
     return content
 
 
-def run(*arguments, cwd=None):
+def run(*arguments, cwd=None, include_stderr=False):
     """Runs arguments without a shell and returns stdout.
 
+    If include_stderr is true, appends diagnostic output to stdout.
     A nonzero exit raises an exception that includes captured diagnostic output.
     """
     result = subprocess.run(arguments, cwd=cwd, text=True, capture_output=True)
@@ -37,7 +38,7 @@ def run(*arguments, cwd=None):
     if result.returncode:
         raise RuntimeError(f"{arguments[0]} failed:\n{result.stdout}\n{result.stderr}")
 
-    return result.stdout
+    return result.stdout + (result.stderr if include_stderr else "")
 
 
 def fields(paragraph):
@@ -164,7 +165,7 @@ def verify(tag, previous_tag, destination):
         assert installed == install_version, installed
 
     binary = root / "usr/bin/hddmount"
-    assert "link-uploads" in run(str(binary), "--help")
+    assert "link-uploads" in run(str(binary), "--help", include_stderr=True)
     assert binary.read_bytes() == run_archive_binary(destination, version)
     print(f"Ubuntu amd64 isolated dpkg install {old_version} -> {version}, CLI help, archive binary match passed")
     print("Pages: version and link-uploads passed. No disk mount or live upload-path mutation was performed.")
