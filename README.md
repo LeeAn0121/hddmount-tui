@@ -20,7 +20,9 @@ Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구�
 - 디스크 목록에서 SMART 상태를 바로 확인(`s`), 상세 리포트(`smartctl -a`) 조회 가능
 - 마운트된 파티션을 마운트 위저드 없이 바로 해제(`u`)
 - 마운트 시 마운트 포인트 이름을 딴 ext4 라벨 자동 설정
-- CMS 업로드 경로 심볼릭 링크 자동 생성. `/data/uploads` 가 있으면 `/var/www/html/uploads` 와 `/var/www/html/public/uploads` 를 모두 연결하고, 없으면 `/var/www/html/uploads` 를 실제 경로로 두고 `/var/www/html/public/uploads` 만 연결
+- CMS 업로드 경로 두 곳을 모두 `/data/uploads`로 연결한다. `/data` 마운트가 없으면 시스템 디스크로 대체하지 않는다.
+- 빈 디렉터리와 잘못된 링크는 백업 후 교체한다. 기존 데이터 디렉터리·파일·마운트와 충돌하면 변경하지 않고 안내한다.
+- `link-uploads`로 디스크 재마운트 없이 업로드 링크만 다시 구성한다.
 - `/var/log/hddmount.log` 에 모든 마운트/언마운트/포맷 작업 기록 (운영 감사용)
 - 동일 용량 디스크 여러 개로 mdadm RAID1 / RAID10 배열 구성(`R`)
 - 자동화용 비대화형 CLI 서브커맨드 (`list`/`parts`/`smart`/`mount`/`unmount`/`format-disk`)
@@ -96,6 +98,50 @@ hddmount --help
 ```
 
 모든 CLI 동작은 TUI와 동일하게 `/var/log/hddmount.log` 에 기록됩니다.
+
+## Cloud33 CI4 업로드 경로
+
+Cloud33용 데이터 디스크는 `/data`에 마운트한다.
+다른 경로에 마운트한 디스크를 `/data/uploads`로 자동 연결하지 않는다.
+
+```text
+데이터 디스크 → /data
+실제 파일    → /data/uploads
+/var/www/html/uploads        → /data/uploads
+/var/www/html/public/uploads → /data/uploads
+```
+
+두 웹 경로는 bind mount가 아닌 심볼릭 링크다.
+fstab에는 데이터 디스크의 `/data` 마운트만 등록한다.
+기존 파티션의 파일시스템과 대상 장치를 확인한 뒤 실행한다.
+
+```bash
+# 기존 ext4 데이터 파티션 사용 예시. 실제 장치 이름으로 변경한다.
+sudo hddmount mount --partition sdb1 --mountpoint /data --fstab
+
+# 데이터 디스크는 이미 마운트되어 있고 링크만 수정할 경우
+sudo hddmount link-uploads
+
+# 두 경로가 같은 저장소를 가리키는지 확인
+findmnt /data
+readlink -f /var/www/html/uploads
+readlink -f /var/www/html/public/uploads
+```
+
+링크 작업 전에 웹·Node 업로드 쓰기를 중지한다.
+기존 웹 디렉터리에 파일이 있으면 자동 복사·덮어쓰기·삭제하지 않는다.
+원본과 `/data/uploads`를 백업하고 이름이 같은 파일의 내용을 비교한 뒤 병합한다.
+원본 데이터를 검증된 별도 백업으로 보존하고 웹 경로를 비운 뒤 링크 작업을 다시 실행한다.
+빈 폴더와 다른 링크는 각 부모의 `.uploads-before-data-*` 아래에 백업한다.
+올바르게 연결된 경로는 재실행해도 변경하지 않는다.
+
+`link-uploads`는 연결 실패 시 비영 종료 코드를 반환한다.
+일반 디스크 마운트 중 업로드 연결만 실패하면 마운트를 유지하고 연결 오류를 출력한다.
+링크를 만들지 못했다면 CMS 연결이 완료된 상태가 아니다.
+실제 업로드 폴더의 웹·PM2 계정 쓰기 권한은 CI4 설치 도구에서 별도로 확인한다.
+
+새 CLI 명령은 이 변경을 포함한 바이너리에서 사용할 수 있다.
+소스 푸시만으로 기존 설치 패키지가 갱신되지는 않는다.
 
 ## 로컬 개발 빌드
 

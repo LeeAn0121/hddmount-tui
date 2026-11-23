@@ -17,6 +17,7 @@ import (
 var cliSubcommands = map[string]bool{
 	"list": true, "parts": true, "mount": true, "unmount": true,
 	"smart": true, "format-disk": true,
+	"link-uploads": true,
 }
 
 func printCLIUsage() {
@@ -30,6 +31,9 @@ func printCLIUsage() {
 
   smart --disk sdb                    SMART 상태 조회
     [--json]
+
+  link-uploads                        두 CMS 업로드 경로를 /data/uploads에 연결
+    /data 마운트 후 실행. 기존 데이터 디렉터리는 변경하지 않습니다.
 
   mount --partition sdb1 --mountpoint /data/hdd1
     [--format]     파일시스템이 없으면 먼저 ext4로 포맷
@@ -59,9 +63,36 @@ func runCLI(sub string, args []string) int {
 		return cliUnmount(args)
 	case "format-disk":
 		return cliFormatDisk(args)
+	case "link-uploads":
+		return cliLinkUploads(args)
 	}
 	printCLIUsage()
 	return 2
+}
+
+// cliLinkUploads는 디스크 재마운트 없이 업로드 링크만 구성한다.
+// args는 빈 인자 또는 --help다. 성공 0, 경로·마운트·연결 실패 시 1을 반환한다.
+// 기존 데이터는 자동 이동하지 않는다.
+func cliLinkUploads(args []string) int {
+	fs := flag.NewFlagSet("link-uploads", flag.ExitOnError)
+	fs.Parse(args)
+
+	if fs.NArg() != 0 {
+		return fail("link-uploads에는 추가 인자가 없습니다")
+	}
+
+	out, err := diskutil.LinkWebUploads()
+	diskutil.LogEvent("cli-link-web-uploads", "/data/uploads", out, err)
+
+	if out != "" {
+		fmt.Println(out)
+	}
+
+	if err != nil {
+		return fail("업로드 링크 연결 실패: %v", err)
+	}
+
+	return 0
 }
 
 func fail(format string, a ...any) int {
