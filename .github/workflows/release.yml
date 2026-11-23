@@ -23,6 +23,11 @@ jobs:
         with:
           go-version: "1.22"
 
+      - name: Verify source
+        run: |
+          go test ./...
+          go vet ./...
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

@@ -34,7 +34,7 @@ nfpms:
     file_name_template: >-
       {{ .ConventionalFileName }}
     vendor: Koolsign
-    homepage: https://github.com/koolsign/hddmount-tui
+    homepage: https://github.com/LeeAn0121/hddmount-tui
     maintainer: Koolsign <noreply@example.com>
     description: |-
       HDD를 안전하게 마운트하기 위한 TUI 도구.

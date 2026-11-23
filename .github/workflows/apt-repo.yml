@@ -26,20 +26,36 @@ env:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    concurrency:
+      group: apt-repository
+      cancel-in-progress: false
     steps:
-      - name: Checkout source (for CHANGELOG/version info only)
+      - name: Checkout release source and landing page
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag }}
 
       - name: Install repo tooling
         run: sudo apt-get update && sudo apt-get install -y dpkg-dev apt-utils gnupg
 
-      - name: Download release .deb files
+      - name: Download and verify release packages
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
+          set -eu
           mkdir -p dist
-          gh release download "${RELEASE_TAG}" --pattern '*.deb' --dir dist --clobber
+          gh release download "${RELEASE_TAG}" --pattern '*.deb' --pattern checksums.txt --dir dist
+          cd dist
+          grep -E '  [^ /]+\.deb$' checksums.txt > deb-checksums.txt
+          test "$(wc -l < deb-checksums.txt)" -eq 2
+          sha256sum --check deb-checksums.txt
+          for ARCH in ${REPO_ARCHES}; do
+            PACKAGE="hddmount-tui_${RELEASE_TAG#v}_${ARCH}.deb"
+            test "$(dpkg-deb -f "$PACKAGE" Package)" = hddmount-tui
+            test "$(dpkg-deb -f "$PACKAGE" Version)" = "${RELEASE_TAG#v}"
+            test "$(dpkg-deb -f "$PACKAGE" Architecture)" = "$ARCH"
+          done
 
       - name: Checkout or create gh-pages branch
         run: |
@@ -50,8 +66,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git fetch origin gh-pages 2>/dev/null || true
-          if git show-ref --verify --quiet refs/remotes/origin/gh-pages; then
+          PAGES_HEAD=$(git ls-remote --heads origin gh-pages)
+          if test -n "$PAGES_HEAD"; then
+            git fetch origin gh-pages
             git checkout -B gh-pages origin/gh-pages
           else
             git checkout --orphan gh-pages
@@ -106,15 +123,22 @@ jobs:
             --passphrase "${{ secrets.GPG_PASSPHRASE }}" \
             --clearsign -o dists/${REPO_SUITE}/InRelease dists/${REPO_SUITE}/Release
           gpg --export --armor "${{ secrets.GPG_KEY_ID }}" > pubkey.gpg
+          gpg --verify dists/${REPO_SUITE}/Release.gpg dists/${REPO_SUITE}/Release
+          gpg --verify dists/${REPO_SUITE}/InRelease
 
       - name: Commit and push gh-pages
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
+          set -eu
           cd repo
           git add -A
-          git commit -m "chore: update apt repo ($(date -u +%Y-%m-%dT%H:%M:%SZ))" || echo "no changes"
+          if ! git diff --cached --quiet; then
+            git commit -m "APT 패키지와 홈페이지 갱신" -m "릴리스 ${RELEASE_TAG} 패키지와 서명된 저장소 정보를 반영한다."
+          fi
           git remote remove origin 2>/dev/null || true
           git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-          git push origin gh-pages --force
+          git push origin gh-pages
 
       - name: Enable GitHub Pages (first run only, ignored if already set)
         env:
