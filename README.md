@@ -9,6 +9,10 @@ Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구�
 
 프로젝트 홈페이지: https://LeeAn0121.github.io/hddmount-tui
 
+현재 릴리스: [v0.3.7](https://github.com/LeeAn0121/hddmount-tui/releases/tag/v0.3.7).
+v0.3.7부터 두 CMS 업로드 경로 수정과 `link-uploads` 명령을 설치 패키지에 포함한다.
+기존 v0.3.6 패키지에는 이 수정이 없다.
+
 ## 주요 기능
 
 - 시스템 루트 디스크를 자동으로 제외하고, 나머지 디스크를 1TB/2TB/4TB/8TB로 자동 분류
@@ -43,7 +47,17 @@ sudo apt install hddmount-tui
 sudo hddmount
 ```
 
-이후 새 버전이 나오면 평소처럼 `sudo apt update && sudo apt upgrade` 로 갱신됩니다.
+기존 설치는 다음 명령으로 갱신한다. 설치·업데이트 자체는 업로드 링크를 변경하지 않는다.
+
+```bash
+sudo apt update
+apt-cache policy hddmount-tui
+sudo apt install --only-upgrade hddmount-tui
+dpkg-query -W -f='${Version}\n' hddmount-tui
+```
+
+APT 후보 버전과 설치 버전이 모두 `0.3.7`인지 확인한다.
+기존 키와 저장소 등록은 그대로 사용한다.
 
 이 저장소를 포크해서 자신의 계정으로 배포하려면 위 주소의 `LeeAn0121`을 자신의
 GitHub 사용자/조직명으로 바꾸면 됩니다(저장소 이름도 원하는 대로 변경 가능). `README.md`,
@@ -140,8 +154,10 @@ readlink -f /var/www/html/public/uploads
 링크를 만들지 못했다면 CMS 연결이 완료된 상태가 아니다.
 실제 업로드 폴더의 웹·PM2 계정 쓰기 권한은 CI4 설치 도구에서 별도로 확인한다.
 
-새 CLI 명령은 이 변경을 포함한 바이너리에서 사용할 수 있다.
-소스 푸시만으로 기존 설치 패키지가 갱신되지는 않는다.
+`link-uploads`는 v0.3.7 이상 패키지에서 사용할 수 있다.
+이 명령은 링크만 구성하며 디스크 마운트·포맷·기존 데이터 병합은 하지 않는다.
+연결 중 오류가 발생하면 이번에 교체한 경로를 역순으로 복구한다.
+복구 오류가 발생하면 출력된 백업 경로를 보존하고 상태를 확인한다.
 
 ## 로컬 개발 빌드
 
@@ -166,18 +182,40 @@ docs/                 GitHub Pages 랜딩 페이지 소스 (gh-pages 배포 시 
 
 ## 릴리스 만들기
 
+Windows 작업 폴더에서는 `powershell -NoProfile -File scripts/check-source.ps1`로
+테스트·vet·Linux amd64/arm64 빌드를 검사한다.
+
 버전은 [Semantic Versioning](https://semver.org/)을 따릅니다: `MAJOR.MINOR.PATCH`
 (하위 호환 깨짐 / 기능 추가 / 버그 수정). 정식 배포 전 테스트 태그가 필요하면
 `v1.0.0-alpha`, `-beta`, `-rc`, `-dev` 접미사를 사용하세요.
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+# master에서 테스트·vet·Linux amd64/arm64 빌드를 먼저 검증한다.
+git tag -a v0.3.7 -m "v0.3.7 업로드 경로 수정 배포"
+git push origin v0.3.7
 ```
 
 태그를 푸시하면 `release.yml`이 goreleaser로 `linux/amd64`, `linux/arm64` 바이너리와
 `.deb` 패키지를 빌드해 GitHub Release에 올리고, 이어서 `apt-repo.yml`이 그 `.deb`를
 받아 `gh-pages` 브랜치에 실제 APT 저장소(Packages/Release/서명)와 랜딩 페이지를 갱신합니다.
+
+이미 발행한 태그는 이동하거나 재사용하지 않는다.
+APT 작업은 해당 태그의 홈페이지 소스를 사용하고 두 아키텍처의 패키지 버전과 체크섬을 검사한다.
+`gh-pages`는 일반 푸시로 갱신한다. 충돌하면 원인을 확인한 뒤 작업을 다시 실행한다.
+소스 푸시만으로 배포 완료를 판단하지 않는다.
+Release 자산, APT 서명·인덱스, Pages 게시와 실제 APT 후보 버전을 모두 확인한다.
+
+Ubuntu에서 배포 결과를 다시 검사하려면 Python 3.9 이상과 `gpg`, `apt`, `dpkg`가 필요하다.
+다음 명령은 새 출력 폴더에 자산과 격리된 APT·dpkg 상태를 만든다.
+시스템 APT 설정과 실제 업로드 경로는 변경하지 않는다.
+
+```bash
+python3 scripts/verify-release.py v0.3.7 --output dist/verify-v0.3.7
+```
+
+검사 범위는 두 아키텍처의 자산·체크섬·APT 후보·다운로드, 서명·인덱스 해시,
+amd64의 v0.3.6 설치 후 v0.3.7 업데이트와 CLI 도움말이다.
+arm64 실행, 실제 디스크 마운트와 운영 서버 업로드는 별도 환경에서 확인한다.
 
 ## APT 저장소 서명 키 최초 설정 (1회만)
 

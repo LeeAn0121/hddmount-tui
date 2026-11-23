@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hddmount-tui</title>
-<meta name="description" content="Ubuntu용 HDD 마운트 TUI/CLI 도구 - SMART 체크, RAID, busy 언마운트 복구, 비대화형 자동화 지원">
+<meta name="description" content="hddmount-tui v0.3.7 - Ubuntu HDD 마운트 TUI/CLI. /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.">
 <style>
   :root{
     --bg:#0b0d12; --panel:#12151c; --border:#232734; --text:#e7e9ee; --muted:#9aa2b1;
@@ -99,12 +99,12 @@
 <div class="wrap">
 
   <header>
-    <span class="badge">v0.3.6 · Ubuntu · amd64 / arm64 · 정적 바이너리</span>
+    <span class="badge">v0.3.7 · Ubuntu · amd64 / arm64 · 정적 바이너리</span>
     <h1>hddmount-tui</h1>
     <p class="lead">
       1TB/2TB/4TB/8TB HDD를 안전하게 마운트하는 Go 기반 TUI + CLI 도구.
       SMART 체크, mdadm RAID1/RAID10, 비대화형 자동화까지 하나의 바이너리로.
-      마운트 후 uploads 하위 표준 CMS 폴더/권한 설정과 busy 상태의 언마운트 복구까지 지원합니다.
+      /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.
     </p>
     <div class="cta">
       <a class="btn primary" href="#install">설치하기</a>
@@ -130,7 +130,7 @@
       </div>
       <div class="card">
         <h3>비대화형 CLI</h3>
-        <p>프로비저닝 스크립트/cron에 바로 넣는 <code>list</code>/<code>mount</code>/<code>unmount</code>/<code>format-disk</code> 서브커맨드.</p>
+        <p>프로비저닝 스크립트/cron용 <code>list</code>/<code>mount</code>/<code>unmount</code>/<code>format-disk</code> 지원. link-uploads로 재마운트 없이 업로드 링크만 구성합니다.</p>
       </div>
       <div class="card">
         <h3>운영 로그 + 라벨</h3>
@@ -141,8 +141,8 @@
         <p><code>target is busy</code> 상황에서는 <code>fuser -ck</code>로 점유 프로세스를 정리한 뒤 언마운트를 재시도.</p>
       </div>
       <div class="card">
-        <h3>마운트 후 CMS 폴더 준비</h3>
-        <p><code>uploads</code> 아래에 <code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code> 생성 후 권한/소유자 자동 설정.</p>
+        <h3>CMS 폴더와 업로드 연결</h3>
+        <p><code>uploads</code> 아래에 <code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code> 생성 후 권한/소유자를 설정합니다. 두 웹 업로드 경로는 /data/uploads에 연결하며, /data 미마운트 시 시스템 디스크로 대체하지 않습니다.</p>
       </div>
       <div class="card">
         <h3>fstab 안전망</h3>
@@ -241,9 +241,12 @@ https://LeeAn0121.github.io/hddmount-tui stable main" \
 sudo apt update
 sudo apt install hddmount-tui
 
+apt-cache policy hddmount-tui
+dpkg-query -W hddmount-tui
+
 sudo hddmount</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
-      이후 새 버전은 <code>sudo apt update &amp;&amp; sudo apt upgrade</code> 로 갱신됩니다.
+      기존 설치는 <code>sudo apt update &amp;&amp; sudo apt install --only-upgrade hddmount-tui</code>로 갱신합니다. 설치 후 패키지 버전 0.3.7을 확인하세요.
     </p>
   </section>
 
@@ -263,12 +266,20 @@ sudo hddmount</code></pre>
     <h2>자동화 CLI</h2>
     <pre><code>sudo hddmount list --json
 sudo hddmount smart --disk sdb --json
-sudo hddmount mount --partition sdb1 --mountpoint /data/hdd1 --format --fstab
-sudo hddmount unmount --mountpoint /data/hdd1
+sudo hddmount mount --partition sdb1 --mountpoint /data --fstab
+sudo hddmount link-uploads
+findmnt /data
+readlink -f /var/www/html/uploads
+readlink -f /var/www/html/public/uploads
+sudo hddmount unmount --mountpoint /data
 sudo hddmount format-disk --disk sdb --confirm sdb --mountpoint /data/hdd1 --fstab</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
-      마운트 성공 시 <code>uploads</code> 하위 표준 CMS 폴더 생성,
-      <code>chmod -R 755</code>, <code>chown -R www-data:www-data</code>가 자동 실행됩니다.
+      마운트 성공 시 마운트 경로의 <code>uploads</code> 하위에 표준 CMS 폴더를 생성하고,
+      마운트 경로 전체에 <code>chmod -R 755</code>, <code>chown -R www-data:www-data</code>를 실행합니다.
+      /data 마운트를 확인한 뒤 두 웹 업로드 경로를 /data/uploads에 심볼릭 링크로 연결합니다.
+      링크 작업은 웹·Node 업로드 쓰기 중지 후 실행하며, 기존 데이터는 자동 복사·삭제·덮어쓰기하지 않습니다.
+      빈 폴더와 교체 가능한 잘못된 링크는 .uploads-before-data-*에 백업하며, 연결 실패 시 이전 변경을 복구합니다.
+      link-uploads 연결 실패는 비영 종료 코드로 알리고, 일반 마운트 중 링크 연결 실패는 마운트를 유지한 채 오류로 알립니다.
       언마운트 대상이 busy이면 <code>fuser -ck</code> 후 재시도합니다.
     </p>
   </section>
