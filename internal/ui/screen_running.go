@@ -61,16 +61,27 @@ func (m *Model) viewRunError() string {
 func (m *Model) viewSummary() string {
 	var b strings.Builder
 	b.WriteString(okStyle.Render("완료되었습니다!") + "\n\n")
-	b.WriteString("파티션: " + m.selectedPartPath + "\n")
-	b.WriteString("마운트 포인트: " + m.mountPoint + "\n")
-	if m.fstabChoice {
-		b.WriteString("fstab: 등록됨 (재부팅 시 자동 마운트)\n")
+	if m.isSystemStorage {
+		b.WriteString("시스템 디스크 폴더: /data/uploads\n")
+		b.WriteString("포맷·마운트·fstab 변경 없음\n")
 	} else {
-		b.WriteString("fstab: 등록하지 않음\n")
+		b.WriteString("파티션: " + m.selectedPartPath + "\n")
+		b.WriteString("마운트 포인트: " + m.mountPoint + "\n")
+		if m.fstabChoice {
+			b.WriteString("fstab: 등록됨 (재부팅 시 자동 마운트)\n")
+		} else {
+			b.WriteString("fstab: 등록하지 않음\n")
+		}
 	}
 	if m.dfOutput != "" {
 		b.WriteString("\n" + logStyle.Render(m.dfOutput) + "\n")
 	}
-	b.WriteString("\n" + helpStyle.Render("r: 다른 디스크 마운트   q: 종료"))
+	help := "r: 다른 디스크 마운트   q: 종료"
+
+	if m.isSystemStorage {
+		help = "r: 디스크 목록으로   q: 종료"
+	}
+
+	b.WriteString("\n" + helpStyle.Render(help))
 	return boxStyle.Render(b.String())
 }

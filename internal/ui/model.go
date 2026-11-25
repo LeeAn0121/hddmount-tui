@@ -38,6 +38,7 @@ const (
 	scrFatalError
 	scrLoadingSmart
 	scrSmartDetail
+	scrSystemStorageConfirm
 )
 
 // step is one unit of work executed sequentially on the scrRunning screen.
@@ -72,8 +73,10 @@ type Model struct {
 	expectedText string
 
 	// generic yes/no cursor, reused by every confirm screen
-	yesNoCursor int // 0 = 예, 1 = 아니오
-	confirmMsg  string
+	yesNoCursor     int // 0 = 예, 1 = 아니오
+	confirmMsg      string
+	confirmReturn   screen
+	isSystemStorage bool
 
 	// mount point
 	mountPoint string
@@ -249,7 +252,7 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.updateNoDisks(msg)
 	case scrPartitionChoice:
 		return m.updatePartitionChoice(msg)
-	case scrFormatAllConfirm, scrNoFSConfirm, scrMountPointWarnConfirm, scrFstabConfirm, scrUnmountConfirm:
+	case scrFormatAllConfirm, scrNoFSConfirm, scrMountPointWarnConfirm, scrFstabConfirm, scrUnmountConfirm, scrSystemStorageConfirm:
 		return m.updateYesNo(msg)
 	case scrFormatAllDeviceType, scrFormatAllFinalYes, scrNoFSDeviceType, scrMountPoint, scrRaidConfirmType:
 		return m.updateTextInput(msg)
@@ -278,7 +281,7 @@ func (m *Model) View() string {
 		return m.viewDiskList()
 	case scrNoDisks:
 		return boxStyle.Render(warnStyle.Render("마운트 가능한 디스크가 없습니다 (시스템 루트 디스크 제외).") +
-			"\n\n" + helpStyle.Render("q: 종료"))
+			"\n\n" + helpStyle.Render("p: HDD 없이 폴더 준비   q: 종료"))
 	case scrLoadingPartitions:
 		return boxStyle.Render(fmt.Sprintf("%s 파티션 정보를 불러오는 중...", m.spin.View()))
 	case scrPartitionChoice:
@@ -303,6 +306,11 @@ func (m *Model) View() string {
 		return m.viewYesNo("재부팅 시 자동 마운트되도록 /etc/fstab 에 등록할까요?")
 	case scrUnmountConfirm:
 		return m.viewYesNo(warnStyle.Render(fmt.Sprintf("%s 마운트를 해제할까요?", m.unmountTargetPath)))
+	case scrSystemStorageConfirm:
+		return m.viewYesNo("시스템 디스크 /data/uploads를 사용합니다.\n" +
+			"HDD 없이 폴더와 웹 업로드 링크를 준비합니다.\n" +
+			"포맷·마운트·fstab 변경 없음. 기존 데이터를 보존합니다.\n\n" +
+			warnStyle.Render("웹 업로드 쓰기를 중지한 뒤 진행하세요.") + "\n계속할까요?")
 	case scrRaidDiskSelect:
 		return m.viewRaidDiskSelect()
 	case scrRaidLevelChoice:

@@ -22,6 +22,7 @@ func (m *Model) updateDiskList(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.diskCur++
 		}
 	case "enter":
+		m.isSystemStorage = false
 		m.selectedDisk = m.disks[m.diskCur]
 		m.screen = scrLoadingPartitions
 		return m, loadPartitionsCmd(m.selectedDisk.Name)
@@ -30,7 +31,10 @@ func (m *Model) updateDiskList(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.screen = scrLoadingSmart
 		return m, tea.Batch(m.spin.Tick, loadSmartCmd(m.selectedDisk.DevPath()))
 	case "R":
+		m.isSystemStorage = false
 		return m.startRaidSetup()
+	case "p":
+		return m.startSystemStorageConfirm()
 	case "q", "esc":
 		m.quitting = true
 		return m, tea.Quit
@@ -40,6 +44,10 @@ func (m *Model) updateDiskList(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *Model) updateNoDisks(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if keyMsg, ok := msg.(tea.KeyMsg); ok {
+		if keyMsg.String() == "p" {
+			return m.startSystemStorageConfirm()
+		}
+
 		if keyMsg.String() == "q" || keyMsg.String() == "esc" {
 			m.quitting = true
 			return m, tea.Quit
@@ -70,6 +78,6 @@ func (m *Model) viewDiskList() string {
 		b.WriteString("\n" + errorStyle.Render(m.diskErr) + "\n")
 	}
 
-	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   q: 종료"))
+	b.WriteString("\n" + helpStyle.Render("↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   p: HDD 없이 폴더 준비   q: 종료"))
 	return boxStyle.Render(b.String())
 }

@@ -40,6 +40,27 @@ func (m *Model) updateYesNo(msg tea.Msg) (tea.Model, tea.Cmd) {
 // yes/no screen we were on when the user confirmed.
 func (m *Model) confirmYesNo(yes bool) (tea.Model, tea.Cmd) {
 	switch m.screen {
+	case scrSystemStorageConfirm:
+		if !yes {
+			m.screen = m.confirmReturn
+
+			return m, nil
+		}
+
+		m.isSystemStorage = true
+		m.mountPoint = "/data/uploads"
+		m.selectedPartPath = ""
+		m.fstabChoice = false
+		m.dfOutput = ""
+
+		return m.startRun([]step{
+			{
+				label:  "시스템 디스크 폴더/링크 준비",
+				target: "/data/uploads",
+				run:    diskutil.PrepareSystemUploads,
+			},
+		}, scrSummary)
+
 	case scrFormatAllConfirm:
 		if !yes {
 			m.screen = scrPartitionChoice
@@ -118,6 +139,18 @@ func (m *Model) confirmYesNo(yes bool) (tea.Model, tea.Cmd) {
 		}
 		return m.startRun(steps, scrSummary)
 	}
+	return m, nil
+}
+
+// startSystemStorageConfirm opens folder preparation confirmation without running work.
+//
+// It records the current disk screen for cancellation and selects No by default.
+// It returns the updated model and no command. It does not return an error.
+func (m *Model) startSystemStorageConfirm() (tea.Model, tea.Cmd) {
+	m.confirmReturn = m.screen
+	m.yesNoCursor = 1
+	m.screen = scrSystemStorageConfirm
+
 	return m, nil
 }
 
