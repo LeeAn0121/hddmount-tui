@@ -9,7 +9,8 @@ Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구�
 
 프로젝트 홈페이지: https://LeeAn0121.github.io/hddmount-tui
 
-현재 릴리스: [v0.3.7](https://github.com/LeeAn0121/hddmount-tui/releases/tag/v0.3.7).
+현재 릴리스: [v0.3.8](https://github.com/LeeAn0121/hddmount-tui/releases/tag/v0.3.8).
+v0.3.8은 Ubuntu 버전별 패키지 검사와 최신 util-linux의 fstab 검증을 포함한다.
 v0.3.7부터 두 CMS 업로드 경로 수정과 `link-uploads` 명령을 설치 패키지에 포함한다.
 기존 v0.3.6 패키지에는 이 수정이 없다.
 
@@ -56,7 +57,7 @@ sudo apt install --only-upgrade hddmount-tui
 dpkg-query -W -f='${Version}\n' hddmount-tui
 ```
 
-APT 후보 버전과 설치 버전이 모두 `0.3.7`인지 확인한다.
+APT 후보 버전과 설치 버전이 모두 `0.3.8`인지 확인한다.
 기존 키와 저장소 등록은 그대로 사용한다.
 
 이 저장소를 포크해서 자신의 계정으로 배포하려면 위 주소의 `LeeAn0121`을 자신의
@@ -192,8 +193,8 @@ Windows 작업 폴더에서는 `powershell -NoProfile -File scripts/check-source
 
 ```bash
 # master에서 테스트·vet·Linux amd64/arm64 빌드를 먼저 검증한다.
-git tag -a v0.3.7 -m "v0.3.7 업로드 경로 수정 배포"
-git push origin v0.3.7
+git tag -a v0.3.8 -m "v0.3.8 Ubuntu 호환성 확대 배포"
+git push origin v0.3.8
 ```
 
 태그를 푸시하면 `release.yml`이 goreleaser로 `linux/amd64`, `linux/arm64` 바이너리와
@@ -211,12 +212,14 @@ Ubuntu에서 배포 결과를 다시 검사하려면 Python 3.9 이상과 `gpg`,
 시스템 APT 설정과 실제 업로드 경로는 변경하지 않는다.
 
 ```bash
-python3 scripts/verify-release.py v0.3.7 --output dist/verify-v0.3.7
+python3 scripts/verify-release.py v0.3.8 --previous v0.3.7 --output dist/verify-v0.3.8
 ```
 
 검사 범위는 두 아키텍처의 자산·체크섬·APT 후보·다운로드, 서명·인덱스 해시,
 amd64의 이전·현재 패키지 바이너리 추출과 CLI 도움말이다.
 의존성이 있는 패키지의 실제 설치·업데이트는 Ubuntu 호환성 CI에서 검사한다.
+공개 배포 후 `Ubuntu compatibility` 워크플로를 수동 실행할 때 `published_tag`를 지정하면
+각 Ubuntu 환경에서 v0.3.7을 설치한 뒤 해당 공개 버전으로 APT 업데이트를 검사한다.
 arm64 실행, 실제 디스크 마운트와 운영 서버 업로드는 별도 환경에서 확인한다.
 
 ## APT 저장소 서명 키 최초 설정 (1회만)

@@ -5,6 +5,12 @@ on:
     branches: [master]
   pull_request:
   workflow_dispatch:
+    inputs:
+      published_tag:
+        description: "Optional published release to install and verify (for example v0.3.8)"
+        required: false
+        default: ""
+        type: string
   workflow_call:
   schedule:
     - cron: "20 3 * * 1"
@@ -91,6 +97,20 @@ jobs:
           dpkg --compare-versions "$VERSION" gt "$PREVIOUS_VERSION"
           apt-get install -y --no-install-recommends "$PWD/$PACKAGE"
           test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = "$VERSION"
+
+      - name: Verify exact published release upgrade
+        if: github.event_name == 'workflow_dispatch' && inputs.published_tag != ''
+        env:
+          RELEASE_TAG: ${{ inputs.published_tag }}
+        run: |
+          curl -fsSL --retry 3 https://github.com/LeeAn0121/hddmount-tui/releases/download/v0.3.7/hddmount-tui_0.3.7_amd64.deb -o /tmp/hddmount-previous.deb
+          apt-get install -y --no-install-recommends --allow-downgrades /tmp/hddmount-previous.deb
+          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = 0.3.7
+          VERSION=${RELEASE_TAG#v}
+          dpkg --compare-versions "$VERSION" gt 0.3.7
+          apt-get install -y --no-install-recommends "hddmount-tui=$VERSION"
+          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = "$VERSION"
+          apt-cache policy hddmount-tui
 
       - name: Test real distribution tools and upload safety
         run: |

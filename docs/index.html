@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hddmount-tui</title>
-<meta name="description" content="hddmount-tui v0.3.7 - Ubuntu HDD 마운트 TUI/CLI. /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.">
+<meta name="description" content="hddmount-tui v0.3.8 - Ubuntu 22.04·24.04·26.04 이상 지원 HDD 마운트 TUI/CLI. /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.">
 <style>
   :root{
     --bg:#0b0d12; --panel:#12151c; --border:#232734; --text:#e7e9ee; --muted:#9aa2b1;
@@ -99,11 +99,12 @@
 <div class="wrap">
 
   <header>
-    <span class="badge">v0.3.7 · Ubuntu · amd64 / arm64 · 정적 바이너리</span>
+    <span class="badge">v0.3.8 · Ubuntu 22.04·24.04·26.04 이상 · amd64 / arm64 · 정적 바이너리</span>
     <h1>hddmount-tui</h1>
     <p class="lead">
       1TB/2TB/4TB/8TB HDD를 안전하게 마운트하는 Go 기반 TUI + CLI 도구.
       SMART 체크, mdadm RAID1/RAID10, 비대화형 자동화까지 하나의 바이너리로.
+      Ubuntu 22.04·24.04·26.04 이상을 지원하며, 26.10과 개발 버전도 CI에서 검사합니다. 향후 버전의 호환성은 개별 확인이 필요합니다.
       /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.
     </p>
     <div class="cta">
@@ -146,7 +147,7 @@
       </div>
       <div class="card">
         <h3>fstab 안전망</h3>
-        <p>등록 전 자동 백업, <code>mount -a --fake</code> 문법 검증, 실패 시 자동 롤백으로 재부팅 사고 방지.</p>
+        <p>등록 전 자동 백업, <code>findmnt --verify</code> 검사, 실패 시 이전 fstab 복구로 재부팅 사고 방지.</p>
       </div>
     </div>
   </section>
@@ -246,7 +247,7 @@ dpkg-query -W hddmount-tui
 
 sudo hddmount</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
-      기존 설치는 <code>sudo apt update &amp;&amp; sudo apt install --only-upgrade hddmount-tui</code>로 갱신합니다. 설치 후 패키지 버전 0.3.7을 확인하세요.
+      기존 설치는 <code>sudo apt update &amp;&amp; sudo apt install --only-upgrade hddmount-tui</code>로 갱신합니다. 필수 도구 의존성은 APT가 자동 설치합니다. 설치 후 패키지 버전 0.3.8을 확인하세요.
     </p>
   </section>
 
