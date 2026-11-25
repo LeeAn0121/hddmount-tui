@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>hddmount-tui</title>
-<meta name="description" content="hddmount-tui v0.3.8 - Ubuntu 22.04·24.04·26.04 이상 지원 HDD 마운트 TUI/CLI. /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.">
+<meta name="description" content="hddmount-tui v0.3.9 - Ubuntu 22.04·24.04·26.04 이상 지원 HDD 마운트 TUI/CLI. HDD 없이도 prepare-uploads로 시스템 디스크에 표준 폴더와 두 웹 업로드 링크를 준비합니다.">
 <style>
   :root{
     --bg:#0b0d12; --panel:#12151c; --border:#232734; --text:#e7e9ee; --muted:#9aa2b1;
@@ -99,13 +99,14 @@
 <div class="wrap">
 
   <header>
-    <span class="badge">v0.3.8 · Ubuntu 22.04·24.04·26.04 이상 · amd64 / arm64 · 정적 바이너리</span>
+    <span class="badge">v0.3.9 · Ubuntu 22.04·24.04·26.04 이상 · amd64 / arm64 · 정적 바이너리</span>
     <h1>hddmount-tui</h1>
     <p class="lead">
       1TB/2TB/4TB/8TB HDD를 안전하게 마운트하는 Go 기반 TUI + CLI 도구.
       SMART 체크, mdadm RAID1/RAID10, 비대화형 자동화까지 하나의 바이너리로.
       Ubuntu 22.04·24.04·26.04 이상을 지원하며, 26.10과 개발 버전도 CI에서 검사합니다. 향후 버전의 호환성은 개별 확인이 필요합니다.
       /var/www/html/uploads와 /var/www/html/public/uploads를 /data/uploads에 심볼릭 링크로 연결합니다.
+      HDD가 없으면 prepare-uploads를 명시적으로 실행하여 시스템 디스크에 표준 폴더와 두 웹 링크를 준비합니다.
     </p>
     <div class="cta">
       <a class="btn primary" href="#install">설치하기</a>
@@ -131,7 +132,7 @@
       </div>
       <div class="card">
         <h3>비대화형 CLI</h3>
-        <p>프로비저닝 스크립트/cron용 <code>list</code>/<code>mount</code>/<code>unmount</code>/<code>format-disk</code> 지원. link-uploads로 재마운트 없이 업로드 링크만 구성합니다.</p>
+        <p>프로비저닝 스크립트/cron용 <code>list</code>/<code>mount</code>/<code>unmount</code>/<code>format-disk</code> 지원. 마운트한 HDD에는 link-uploads, HDD 없는 시스템 폴더에는 prepare-uploads를 사용합니다.</p>
       </div>
       <div class="card">
         <h3>운영 로그 + 라벨</h3>
@@ -143,7 +144,7 @@
       </div>
       <div class="card">
         <h3>CMS 폴더와 업로드 연결</h3>
-        <p><code>uploads</code> 아래에 <code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code> 생성 후 권한/소유자를 설정합니다. 두 웹 업로드 경로는 /data/uploads에 연결하며, /data 미마운트 시 시스템 디스크로 대체하지 않습니다.</p>
+        <p><code>uploads</code> 아래에 <code>contents</code>, <code>csv</code>, <code>log</code>, <code>monitor</code>, <code>photo</code>, <code>rrd</code>, <code>template</code>을 준비하고 두 웹 업로드 경로를 /data/uploads에 연결합니다. 기본 link-uploads는 /data 미마운트 시 시스템 디스크로 대체하지 않습니다. 시스템 디스크는 prepare-uploads로 명시적으로 선택합니다.</p>
       </div>
       <div class="card">
         <h3>fstab 안전망</h3>
@@ -167,7 +168,7 @@
   /dev/sdc    2TB     ST2000DM008-2FR102              SMART=정상
   /dev/sdd    4TB     WDC WD40EFRX-68WT0N0             <span class="t-err">SMART=위험(FAILED)</span>
 
-<span class="t-help">↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   q: 종료</span></pre>
+<span class="t-help">↑/↓: 이동   enter: 선택   s: SMART 상세   R: RAID 구성   p: 시스템 폴더 준비   q: 종료</span></pre>
         </div>
         <p class="cap">디스크 목록 — 용량별 자동 분류 + SMART 헬스 한눈에 확인</p>
       </div>
@@ -247,7 +248,7 @@ dpkg-query -W hddmount-tui
 
 sudo hddmount</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
-      기존 설치는 <code>sudo apt update &amp;&amp; sudo apt install --only-upgrade hddmount-tui</code>로 갱신합니다. 필수 도구 의존성은 APT가 자동 설치합니다. 설치 후 패키지 버전 0.3.8을 확인하세요.
+      기존 설치는 <code>sudo apt update &amp;&amp; sudo apt install --only-upgrade hddmount-tui</code>로 갱신합니다. 필수 도구 의존성은 APT가 자동 설치합니다. 설치 후 패키지 버전 0.3.9를 확인하세요.
     </p>
   </section>
 
@@ -256,7 +257,7 @@ sudo hddmount</code></pre>
     <div class="scrollbox">
     <table>
       <tr><th>화면</th><th>키</th></tr>
-      <tr><td>디스크 목록</td><td><code>↑/↓</code> 이동 · <code>enter</code> 선택 · <code>s</code> SMART 상세 · <code>R</code> RAID 구성 · <code>q</code> 종료</td></tr>
+      <tr><td>디스크 목록 / 디스크 없음</td><td><code>↑/↓</code> 이동 · <code>enter</code> 선택 · <code>s</code> SMART 상세 · <code>R</code> RAID 구성 · p: 시스템 폴더 준비 · <code>q</code> 종료. 디스크 없음 화면은 p로 폴더 준비, q 또는 Esc로 종료합니다. p를 누르면 공통 예/아니오 확인 화면을 엽니다. 기본값은 아니오이며, 예를 선택해야 실행합니다.</td></tr>
       <tr><td>파티션 선택</td><td><code>↑/↓</code> 이동 · <code>enter</code> 마운트/포맷 · <code>u</code> 마운트 해제 · <code>b</code> 뒤로</td></tr>
       <tr><td>확인/경고</td><td><code>y</code>/<code>n</code> 또는 방향키+<code>enter</code>, 파괴적 작업은 경로 재입력으로 이중 확인</td></tr>
     </table>
@@ -267,17 +268,28 @@ sudo hddmount</code></pre>
     <h2>자동화 CLI</h2>
     <pre><code>sudo hddmount list --json
 sudo hddmount smart --disk sdb --json
+# HDD 모드: /data를 마운트한 뒤 링크 구성
 sudo hddmount mount --partition sdb1 --mountpoint /data --fstab
 sudo hddmount link-uploads
 findmnt /data
 readlink -f /var/www/html/uploads
 readlink -f /var/www/html/public/uploads
 sudo hddmount unmount --mountpoint /data
-sudo hddmount format-disk --disk sdb --confirm sdb --mountpoint /data/hdd1 --fstab</code></pre>
+sudo hddmount format-disk --disk sdb --confirm sdb --mountpoint /data/hdd1 --fstab
+
+# HDD가 없는 시스템 폴더 모드: 위 HDD 모드 대신 명시적으로 선택
+# 웹·Node 업로드 쓰기를 중지한 뒤 실행
+sudo hddmount prepare-uploads
+readlink -f /var/www/html/uploads
+readlink -f /var/www/html/public/uploads</code></pre>
     <p style="color:var(--muted);font-size:0.9rem">
       마운트 성공 시 마운트 경로의 <code>uploads</code> 하위에 표준 CMS 폴더를 생성하고,
       마운트 경로 전체에 <code>chmod -R 755</code>, <code>chown -R www-data:www-data</code>를 실행합니다.
-      /data 마운트를 확인한 뒤 두 웹 업로드 경로를 /data/uploads에 심볼릭 링크로 연결합니다.
+      기본 link-uploads는 /data 마운트를 확인한 뒤 두 웹 업로드 경로를 /data/uploads에 심볼릭 링크로 연결합니다.
+      HDD 없는 prepare-uploads는 시스템 디스크의 /data/uploads에 표준 폴더와 같은 두 웹 링크를 준비합니다.
+      이 모드는 포맷·마운트·fstab 변경 없이 새 업로드 폴더만 www-data:www-data 소유자와 755 권한으로 설정하며, 기존 데이터와 소유자·권한은 보존합니다.
+      /data 또는 /data/uploads가 별도로 마운트된 경우에는 prepare-uploads를 중단합니다.
+      시스템 폴더 모드를 다시 실행할 때도 prepare-uploads를 사용합니다. 기본 link-uploads에는 계속 /data 마운트가 필요합니다.
       링크 작업은 웹·Node 업로드 쓰기 중지 후 실행하며, 기존 데이터는 자동 복사·삭제·덮어쓰기하지 않습니다.
       빈 폴더와 교체 가능한 잘못된 링크는 .uploads-before-data-*에 백업하며, 연결 실패 시 이전 변경을 복구합니다.
       link-uploads 연결 실패는 비영 종료 코드로 알리고, 일반 마운트 중 링크 연결 실패는 마운트를 유지한 채 오류로 알립니다.

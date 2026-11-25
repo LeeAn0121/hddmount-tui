@@ -9,8 +9,9 @@ Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구�
 
 프로젝트 홈페이지: https://LeeAn0121.github.io/hddmount-tui
 
-현재 릴리스: [v0.3.8](https://github.com/LeeAn0121/hddmount-tui/releases/tag/v0.3.8).
-v0.3.8은 Ubuntu 버전별 패키지 검사와 최신 util-linux의 fstab 검증을 포함한다.
+현재 릴리스: [v0.3.9](https://github.com/LeeAn0121/hddmount-tui/releases/tag/v0.3.9).
+v0.3.9는 HDD 없이 시스템 디스크에 폴더와 업로드 링크를 준비하는 명시적 모드를 포함한다.
+v0.3.8부터 Ubuntu 버전별 패키지 검사와 최신 util-linux의 fstab 검증을 포함한다.
 v0.3.7부터 두 CMS 업로드 경로 수정과 `link-uploads` 명령을 설치 패키지에 포함한다.
 기존 v0.3.6 패키지에는 이 수정이 없다.
 
@@ -25,7 +26,8 @@ v0.3.7부터 두 CMS 업로드 경로 수정과 `link-uploads` 명령을 설치 
 - 디스크 목록에서 SMART 상태를 바로 확인(`s`), 상세 리포트(`smartctl -a`) 조회 가능
 - 마운트된 파티션을 마운트 위저드 없이 바로 해제(`u`)
 - 마운트 시 마운트 포인트 이름을 딴 ext4 라벨 자동 설정
-- CMS 업로드 경로 두 곳을 모두 `/data/uploads`로 연결한다. `/data` 마운트가 없으면 시스템 디스크로 대체하지 않는다.
+- CMS 업로드 경로 두 곳을 모두 `/data/uploads`로 연결한다. 기본 `link-uploads`는 `/data` 미마운트 시 중단한다.
+- HDD가 없으면 `prepare-uploads` 또는 TUI의 `p`를 명시적으로 선택하여 시스템 디스크에 폴더만 준비한다.
 - 빈 디렉터리와 잘못된 링크는 백업 후 교체한다. 기존 데이터 디렉터리·파일·마운트와 충돌하면 변경하지 않고 안내한다.
 - `link-uploads`로 디스크 재마운트 없이 업로드 링크만 다시 구성한다.
 - `/var/log/hddmount.log` 에 모든 마운트/언마운트/포맷 작업 기록 (운영 감사용)
@@ -57,7 +59,7 @@ sudo apt install --only-upgrade hddmount-tui
 dpkg-query -W -f='${Version}\n' hddmount-tui
 ```
 
-APT 후보 버전과 설치 버전이 모두 `0.3.8`인지 확인한다.
+APT 후보 버전과 설치 버전이 모두 `0.3.9`인지 확인한다.
 기존 키와 저장소 등록은 그대로 사용한다.
 
 이 저장소를 포크해서 자신의 계정으로 배포하려면 위 주소의 `LeeAn0121`을 자신의
@@ -71,6 +73,7 @@ GitHub 사용자/조직명으로 바꾸면 됩니다(저장소 이름도 원하�
 | 화면 | 키 |
 |---|---|
 | 디스크 목록 | `↑/↓` 이동, `enter` 선택, `s` SMART 상세, `R` RAID 구성, `q` 종료 |
+| 디스크 목록·디스크 없음 | `p` HDD 없이 폴더 준비, 확인 화면의 기본 선택은 아니오 |
 | 파티션 선택 | `↑/↓` 이동, `enter` 선택(마운트/포맷), `u` 마운트 해제, `b` 뒤로 |
 | 확인/경고 화면 | `y`/`n` 또는 `←/→` + `enter`, 파괴적 작업은 장치 경로 재입력으로 이중 확인 |
 | 완료 화면 | `r` 다른 디스크 계속 마운트, `q` 종료 |
@@ -116,7 +119,7 @@ hddmount --help
 
 ## Cloud33 CI4 업로드 경로
 
-Cloud33용 데이터 디스크는 `/data`에 마운트한다.
+별도 데이터 디스크를 사용하는 경우 `/data`에 마운트한다.
 다른 경로에 마운트한 디스크를 `/data/uploads`로 자동 연결하지 않는다.
 
 ```text
@@ -154,6 +157,36 @@ readlink -f /var/www/html/public/uploads
 일반 디스크 마운트 중 업로드 연결만 실패하면 마운트를 유지하고 연결 오류를 출력한다.
 링크를 만들지 못했다면 CMS 연결이 완료된 상태가 아니다.
 실제 업로드 폴더의 웹·PM2 계정 쓰기 권한은 CI4 설치 도구에서 별도로 확인한다.
+
+### HDD 없이 시스템 디스크에 폴더 준비
+
+별도 HDD가 없으면 다음 명령을 명시적으로 실행한다.
+실제 저장 위치는 시스템 디스크의 `/data/uploads`이며 두 웹 링크의 경로는 같다.
+포맷, 파티션 생성, 마운트, fstab 변경은 하지 않는다.
+
+```bash
+# 먼저 웹·Node 업로드 쓰기를 중지한다.
+sudo hddmount prepare-uploads
+readlink -f /var/www/html/uploads
+readlink -f /var/www/html/public/uploads
+```
+
+TUI에서는 디스크 목록 또는 디스크가 없는 화면에서 `p`를 누른다.
+확인 화면의 기본 선택은 아니오다. 시스템 디스크 사용에 동의할 때 예를 선택한다.
+`uploads`와 `contents`, `csv`, `log`, `monitor`, `photo`, `rrd`, `template` 폴더를 준비한다.
+새 업로드 폴더만 `www-data` 소유자와 `755` 권한으로 설정한다.
+기존 데이터, 기존 폴더의 소유자·권한, `/data`의 다른 파일은 변경하지 않는다.
+기존 폴더는 실제 업로드 계정에 쓰기 권한이 있는지 별도로 확인한다.
+기존 웹 경로에 데이터가 있으면 자동 이동하지 않고 중단한다.
+빈 웹 폴더와 교체 가능한 링크의 백업·복구 규칙은 기존 링크 모드와 같다.
+실패 전에 새로 만든 폴더는 임의 삭제하지 않는다.
+
+`/data` 또는 `/data/uploads`가 별도로 마운트되어 있으면 이 모드는 중단한다.
+이미 마운트한 데이터 디스크에는 기존 `link-uploads`를 사용한다.
+시스템 폴더 모드의 재실행은 `prepare-uploads`를 다시 사용한다.
+기본 `link-uploads`는 시스템 디스크로 자동 대체하지 않는다.
+시스템 디스크의 남은 용량은 `df -h /data/uploads`로 확인한다.
+나중에 HDD를 `/data`에 마운트하면 기존 시스템 폴더가 가려지므로 먼저 백업·이전을 수행한다.
 
 `link-uploads`는 v0.3.7 이상 패키지에서 사용할 수 있다.
 이 명령은 링크만 구성하며 디스크 마운트·포맷·기존 데이터 병합은 하지 않는다.
@@ -193,8 +226,8 @@ Windows 작업 폴더에서는 `powershell -NoProfile -File scripts/check-source
 
 ```bash
 # master에서 테스트·vet·Linux amd64/arm64 빌드를 먼저 검증한다.
-git tag -a v0.3.8 -m "v0.3.8 Ubuntu 호환성 확대 배포"
-git push origin v0.3.8
+git tag -a v0.3.9 -m "v0.3.9 HDD 없는 폴더 준비 배포"
+git push origin v0.3.9
 ```
 
 태그를 푸시하면 `release.yml`이 goreleaser로 `linux/amd64`, `linux/arm64` 바이너리와
@@ -212,7 +245,7 @@ Ubuntu에서 배포 결과를 다시 검사하려면 Python 3.9 이상과 `gpg`,
 시스템 APT 설정과 실제 업로드 경로는 변경하지 않는다.
 
 ```bash
-python3 scripts/verify-release.py v0.3.8 --previous v0.3.7 --output dist/verify-v0.3.8
+python3 scripts/verify-release.py v0.3.9 --previous v0.3.8 --output dist/verify-v0.3.9
 ```
 
 검사 범위는 두 아키텍처의 자산·체크섬·APT 후보·다운로드, 서명·인덱스 해시,

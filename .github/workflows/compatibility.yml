@@ -131,3 +131,22 @@ jobs:
           test ! -L /var/www/html/uploads
           test ! -e /var/www/html/public/uploads
           test ! -L /var/www/html/public/uploads
+          FSTAB_BEFORE=$(if test -f /etc/fstab; then sha256sum /etc/fstab; else echo absent; fi)
+          MOUNTS_BEFORE=$(cat /proc/self/mountinfo)
+          hddmount prepare-uploads
+          test -d /data/uploads/photo
+          test "$(readlink /var/www/html/uploads)" = /data/uploads
+          test "$(readlink /var/www/html/public/uploads)" = /data/uploads
+          test "$(stat -c '%U:%G' /data/uploads)" = www-data:www-data
+          echo 'preserve-system-data' > /data/uploads/keep.txt
+          echo 'preserve-other-data' > /data/other.txt
+          chmod 700 /data/uploads/photo
+          hddmount prepare-uploads
+          test "$(cat /var/www/html/public/uploads/keep.txt)" = preserve-system-data
+          test "$(stat -c '%a' /data/uploads/photo)" = 700
+          test "$(stat -c '%U:%G' /data/uploads/keep.txt)" = root:root
+          test "$(stat -c '%U:%G' /data/other.txt)" = root:root
+          test "$(cat /data/other.txt)" = preserve-other-data
+          FSTAB_AFTER=$(if test -f /etc/fstab; then sha256sum /etc/fstab; else echo absent; fi)
+          test "$FSTAB_BEFORE" = "$FSTAB_AFTER"
+          test "$MOUNTS_BEFORE" = "$(cat /proc/self/mountinfo)"
