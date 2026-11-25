@@ -17,7 +17,8 @@ import (
 var cliSubcommands = map[string]bool{
 	"list": true, "parts": true, "mount": true, "unmount": true,
 	"smart": true, "format-disk": true,
-	"link-uploads": true,
+	"link-uploads":    true,
+	"prepare-uploads": true,
 }
 
 func printCLIUsage() {
@@ -34,6 +35,9 @@ func printCLIUsage() {
 
   link-uploads                        두 CMS 업로드 경로를 /data/uploads에 연결
     /data 마운트 후 실행. 기존 데이터 디렉터리는 변경하지 않습니다.
+
+  prepare-uploads                     HDD 없이 시스템 디스크 /data/uploads 폴더 준비
+    표준 폴더와 두 웹 링크만 구성합니다. 포맷·마운트·fstab 변경은 없습니다.
 
   mount --partition sdb1 --mountpoint /data/hdd1
     [--format]     파일시스템이 없으면 먼저 ext4로 포맷
@@ -65,6 +69,8 @@ func runCLI(sub string, args []string) int {
 		return cliFormatDisk(args)
 	case "link-uploads":
 		return cliLinkUploads(args)
+	case "prepare-uploads":
+		return cliPrepareUploads(args)
 	}
 	printCLIUsage()
 	return 2
