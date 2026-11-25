@@ -77,14 +77,18 @@ jobs:
           lsblk --version
           findmnt --version
 
-      - name: Check upgrade from v0.3.7
+      - name: Check signed APT repository and package upgrade
         run: |
-          curl -fsSL --retry 3 https://github.com/LeeAn0121/hddmount-tui/releases/download/v0.3.7/hddmount-tui_0.3.7_amd64.deb -o /tmp/hddmount-previous.deb
-          apt-get install -y --allow-downgrades /tmp/hddmount-previous.deb
-          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = 0.3.7
+          curl -fsSL --retry 3 https://leean0121.github.io/hddmount-tui/pubkey.gpg -o /usr/share/keyrings/hddmount-tui.asc
+          echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/hddmount-tui.asc] https://leean0121.github.io/hddmount-tui stable main' > /etc/apt/sources.list.d/hddmount-tui.list
+          apt-get update --error-on=any
+          PREVIOUS_VERSION=$(apt-cache madison hddmount-tui | head -n 1 | awk '{print $3}')
+          test -n "$PREVIOUS_VERSION"
+          apt-get install -y --no-install-recommends --allow-downgrades "hddmount-tui=$PREVIOUS_VERSION"
+          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = "$PREVIOUS_VERSION"
           PACKAGE=$(find dist -name '*_amd64.deb')
           VERSION=$(dpkg-deb -f "$PACKAGE" Version)
-          dpkg --compare-versions "$VERSION" gt 0.3.7
+          dpkg --compare-versions "$VERSION" gt "$PREVIOUS_VERSION"
           apt-get install -y --no-install-recommends "$PWD/$PACKAGE"
           test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = "$VERSION"
 

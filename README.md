@@ -266,7 +266,7 @@ sudo apt install smartmontools mdadm initramfs-tools
 
 호환성 CI는 22.04·24.04·26.04·26.10과 Ubuntu `devel` 이미지에서 실행한다.
 소스 변경·PR·주간 일정과 새 릴리스 발행 전에 검사한다.
-패키지 설치, 실제 util-linux 도구, fstab 오류 복구와 업로드 링크 안전성을 확인한다.
+패키지 설치, 공개 APT 서명·업데이트, 실제 util-linux 도구, fstab 오류 복구와 업로드 링크 안전성을 확인한다.
 두 아키텍처를 빌드하며 Ubuntu 컨테이너 실행 검사는 amd64에서 수행한다.
 컨테이너는 호스트 커널을 공유하므로 실제 디스크·재부팅·arm64 실행 검사를 대체하지 않는다.
 이후 Ubuntu 버전도 같은 명령 인터페이스를 유지하면 동일 패키지를 사용한다.
