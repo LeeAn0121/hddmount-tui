@@ -2,6 +2,16 @@ package diskutil
 
 import "testing"
 
+// TestEscapeFstabPath는 공백·탭·역슬래시가 fstab 필드를 나누지 않도록 검사한다.
+func TestEscapeFstabPath(t *testing.T) {
+	actual := escapeFstabPath("/data/a b\tback\\slash")
+	expected := `/data/a\040b\011back\134slash`
+
+	if actual != expected {
+		t.Fatalf("경로 이스케이프 불일치: %q != %q", actual, expected)
+	}
+}
+
 func TestIsDangerousMountpoint(t *testing.T) {
 	tests := []struct {
 		path string

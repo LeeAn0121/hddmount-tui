@@ -10,8 +10,22 @@ import (
 	"time"
 )
 
+// runCmd는 도구를 C 로캘로 실행하고 출력과 실행 오류를 반환한다.
+// name은 실행 파일, args는 도구 인자다. 시스템과 디스크를 변경할 수 있다.
+// 명령 실패 시 도구의 진단 출력을 오류에 포함한다.
 func runCmd(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
+
+	for _, variable := range os.Environ() {
+		if strings.HasPrefix(variable, "LC_ALL=") || strings.HasPrefix(variable, "LANG=") || strings.HasPrefix(variable, "LANGUAGE=") {
+			continue
+		}
+
+		cmd.Env = append(cmd.Env, variable)
+	}
+
+	cmd.Env = append(cmd.Env, "LC_ALL=C", "LANG=C", "LANGUAGE=C")
+
 	out, err := cmd.CombinedOutput()
 	trimmed := strings.TrimSpace(string(out))
 	if err != nil {
@@ -152,58 +166,6 @@ func GetUUID(part string) (string, error) {
 		return "", fmt.Errorf("UUID 조회 실패: %w", err)
 	}
 	return strings.TrimSpace(string(out)), nil
-}
-
-const fstabPath = "/etc/fstab"
-
-// SetupFstab appends a `UUID=... <mountPoint> ext4 defaults,nofail 0 2` entry
-// to /etc/fstab. It backs up fstab first, and if `mount -a --fake` reports a
-// syntax problem afterwards, the backup is restored automatically so a typo
-// never breaks the next reboot.
-func SetupFstab(part, mountPoint string) (string, error) {
-	var logs []string
-
-	uuid, err := GetUUID(part)
-	if err != nil || uuid == "" {
-		return "", fmt.Errorf("UUID를 확인할 수 없어 fstab 등록을 건너뜁니다")
-	}
-
-	existing, err := os.ReadFile(fstabPath)
-	if err != nil {
-		return "", fmt.Errorf("fstab 읽기 실패: %w", err)
-	}
-	if strings.Contains(string(existing), uuid) {
-		return "이미 fstab에 등록된 UUID 입니다. 건너뜁니다.", nil
-	}
-
-	backupPath := fmt.Sprintf("%s.bak.%s", fstabPath, time.Now().Format("20060102150405"))
-	if err := os.WriteFile(backupPath, existing, 0o644); err != nil {
-		return "", fmt.Errorf("fstab 백업 실패: %w", err)
-	}
-	logs = append(logs, "fstab 백업 생성: "+backupPath)
-
-	line := fmt.Sprintf("UUID=%s  %s  ext4  defaults,nofail  0  2\n", uuid, mountPoint)
-	f, err := os.OpenFile(fstabPath, os.O_APPEND|os.O_WRONLY, 0o644)
-	if err != nil {
-		return strings.Join(logs, "\n"), fmt.Errorf("fstab 쓰기 실패: %w", err)
-	}
-	if _, err := f.WriteString(line); err != nil {
-		f.Close()
-		return strings.Join(logs, "\n"), fmt.Errorf("fstab 쓰기 실패: %w", err)
-	}
-	f.Close()
-	logs = append(logs, "fstab 항목 추가 완료")
-
-	out, err := runCmd("mount", "-a", "--fake")
-	if err != nil {
-		logs = append(logs, "fstab 문법 오류 감지, 백업으로 롤백합니다:", out)
-		orig, _ := os.ReadFile(backupPath)
-		_ = os.WriteFile(fstabPath, orig, 0o644)
-		return strings.Join(logs, "\n"), fmt.Errorf("fstab 문법 오류로 롤백되었습니다")
-	}
-	logs = append(logs, "fstab 문법 검증 통과 (mount -a --fake)")
-
-	return strings.Join(logs, "\n"), nil
 }
 
 // DiskFree returns `df -h` output for a mounted path, for the final summary screen.
