@@ -1,0 +1,109 @@
+name: Ubuntu compatibility
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+  schedule:
+    - cron: "20 3 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Test and vet
+        run: |
+          go test ./...
+          go vet ./...
+
+      - name: Build both package architectures
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --snapshot --clean
+
+      - name: Build static Linux integration tests
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: go test -c -o dist/diskutil.test ./internal/diskutil
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-compatibility
+          path: |
+            dist/*.deb
+            dist/diskutil.test
+          if-no-files-found: error
+          retention-days: 7
+
+  ubuntu:
+    needs: build
+    runs-on: ubuntu-latest
+    container: ubuntu:${{ matrix.version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["22.04", "24.04", "26.04", "26.10", "devel"]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ubuntu-compatibility
+          path: dist
+
+      - name: Install package and required dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ca-certificates curl
+          apt-get install -y --no-install-recommends ./dist/*_amd64.deb
+          dpkg-query -W hddmount-tui util-linux mount coreutils parted e2fsprogs psmisc
+          lsblk --version
+          findmnt --version
+
+      - name: Check upgrade from v0.3.7
+        run: |
+          curl -fsSL --retry 3 https://github.com/LeeAn0121/hddmount-tui/releases/download/v0.3.7/hddmount-tui_0.3.7_amd64.deb -o /tmp/hddmount-previous.deb
+          apt-get install -y --allow-downgrades /tmp/hddmount-previous.deb
+          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = 0.3.7
+          PACKAGE=$(find dist -name '*_amd64.deb')
+          VERSION=$(dpkg-deb -f "$PACKAGE" Version)
+          dpkg --compare-versions "$VERSION" gt 0.3.7
+          apt-get install -y --no-install-recommends "$PWD/$PACKAGE"
+          test "$(dpkg-query -W -f='${Version}' hddmount-tui)" = "$VERSION"
+
+      - name: Test real distribution tools and upload safety
+        run: |
+          for COMMAND in lsblk blkid findmnt mountpoint mount umount wipefs partprobe parted mkfs.ext4 e2label fuser chmod chown df; do
+            command -v "$COMMAND"
+          done
+          chmod +x dist/diskutil.test
+          ./dist/diskutil.test -test.v
+          hddmount --help
+          hddmount link-uploads --help
+          test ! -e /data
+          if hddmount link-uploads; then
+            echo "Unmounted /data was incorrectly accepted"
+            exit 1
+          fi
+          test ! -e /data
+          test ! -e /var/www/html/uploads
+          test ! -L /var/www/html/uploads
+          test ! -e /var/www/html/public/uploads
+          test ! -L /var/www/html/public/uploads

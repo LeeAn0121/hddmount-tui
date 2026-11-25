@@ -1,6 +1,6 @@
 # hddmount-tui
 
-Ubuntu(18.04 / 20.04 / 22.04)에서 1TB/2TB/4TB/8TB HDD를 안전하게 마운트하기 위한
+Ubuntu 22.04 / 24.04 / 26.04 이상에서 1TB/2TB/4TB/8TB HDD를 안전하게 마운트하기 위한
 Go + [Bubbletea](https://github.com/charmbracelet/bubbletea) 기반 TUI 도구입니다.
 인터랙티브 TUI뿐 아니라 스크립트/자동화에 바로 꽂을 수 있는 CLI 서브커맨드도 제공합니다.
 
@@ -20,7 +20,7 @@ v0.3.7부터 두 CMS 업로드 경로 수정과 `link-uploads` 명령을 설치 
 - 포맷처럼 데이터가 삭제되는 작업은 장치/파티션 경로를 다시 타이핑해야 진행되는 이중 확인
 - `/` 자체와 `/etc`, `/boot` 등 시스템 핵심 경로는 마운트 포인트로 지정 불가
 - `/data`처럼 운영용으로 나눈 최상위 데이터 경로는 마운트 포인트로 지정 가능
-- fstab 등록 시 자동 백업 + `mount -a --fake` 문법 검증 + 실패 시 자동 롤백
+- fstab 등록 시 자동 백업 + `findmnt --verify` 검사 + 실패 시 원본 복구
 - 디스크 목록에서 SMART 상태를 바로 확인(`s`), 상세 리포트(`smartctl -a`) 조회 가능
 - 마운트된 파티션을 마운트 위저드 없이 바로 해제(`u`)
 - 마운트 시 마운트 포인트 이름을 딴 ext4 라벨 자동 설정
@@ -178,6 +178,7 @@ internal/ui/          Bubbletea 화면(디스크 목록 → 파티션 선택 →
 docs/                 GitHub Pages 랜딩 페이지 소스 (gh-pages 배포 시 자동 반영)
 .goreleaser.yaml      amd64/arm64 빌드 + .deb 패키징 설정
 .github/workflows/    release.yml(빌드·릴리스) + apt-repo.yml(APT 저장소 + Pages 발행)
+                     compatibility.yml(Ubuntu 버전별 패키지 설치·외부 도구 검사)
 ```
 
 ## 릴리스 만들기
@@ -214,7 +215,8 @@ python3 scripts/verify-release.py v0.3.7 --output dist/verify-v0.3.7
 ```
 
 검사 범위는 두 아키텍처의 자산·체크섬·APT 후보·다운로드, 서명·인덱스 해시,
-amd64의 v0.3.6 설치 후 v0.3.7 업데이트와 CLI 도움말이다.
+amd64의 이전·현재 패키지 바이너리 추출과 CLI 도움말이다.
+의존성이 있는 패키지의 실제 설치·업데이트는 Ubuntu 호환성 CI에서 검사한다.
 arm64 실행, 실제 디스크 마운트와 운영 서버 업로드는 별도 환경에서 확인한다.
 
 ## APT 저장소 서명 키 최초 설정 (1회만)
@@ -243,7 +245,35 @@ GitHub 저장소 Settings → Secrets and variables → Actions 에 아래 3개�
 
 ## 지원 범위
 
-- OS: Ubuntu 18.04 / 20.04 / 22.04 (정적 바이너리라 glibc 버전 이슈 없음)
+- OS: Ubuntu 22.04 / 24.04 / 26.04 이상
 - 아키텍처: amd64, arm64
 - 파일시스템: ext4 (포맷 시 고정)
 - RAID: mdadm RAID1 / RAID10 (동일 용량 디스크 필요)
+
+정적 Go 바이너리는 glibc에 의존하지 않는다.
+Ubuntu 버전 번호나 코드네임으로 실행을 제한하지 않는다.
+APT 저장소의 `stable`은 이 프로젝트의 배포 채널이다.
+Ubuntu 코드네임이 아니므로 OS 업그레이드 후에도 같은 저장소 주소를 사용한다.
+
+필수 패키지는 `coreutils`, `parted`, `e2fsprogs`, `util-linux`, `mount`, `psmisc`다.
+`.deb`의 `Depends`로 선언하므로 `apt install`이 함께 설치한다.
+압축 파일을 직접 설치하거나 `dpkg -i`만 실행한 환경은 이 도구들도 준비한다.
+SMART에는 `smartmontools`, RAID와 부팅 설정에는 `mdadm`, `initramfs-tools`가 필요하다.
+
+```bash
+sudo apt install smartmontools mdadm initramfs-tools
+```
+
+호환성 CI는 22.04·24.04·26.04·26.10과 Ubuntu `devel` 이미지에서 실행한다.
+소스 변경·PR·주간 일정과 새 릴리스 발행 전에 검사한다.
+패키지 설치, 실제 util-linux 도구, fstab 오류 복구와 업로드 링크 안전성을 확인한다.
+두 아키텍처를 빌드하며 Ubuntu 컨테이너 실행 검사는 amd64에서 수행한다.
+컨테이너는 호스트 커널을 공유하므로 실제 디스크·재부팅·arm64 실행 검사를 대체하지 않는다.
+이후 Ubuntu 버전도 같은 명령 인터페이스를 유지하면 동일 패키지를 사용한다.
+미출시 버전은 `devel`의 주간 검사로 변경을 탐지하며, 모든 미래 버전의 호환성을 미리 보장하지 않는다.
+
+util-linux 2.39 이상에서는 `mount --fake`가 마운트 옵션 분석을 생략한다.
+따라서 fstab은 마운트를 실행하지 않는 `findmnt --verify --verbose --tab-file`로 검사한다.
+검사 실패 시 원본을 복구하고 각 시도의 백업을 별도로 보존한다.
+경로의 공백·탭·역슬래시는 fstab 형식으로 이스케이프한다.
+외부 명령의 오류 판정은 호스트 표시 언어와 무관하게 C 로캘을 사용한다.

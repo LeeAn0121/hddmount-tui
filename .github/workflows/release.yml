@@ -10,7 +10,11 @@ permissions:
   pages: write
 
 jobs:
+  verify-ubuntu:
+    uses: ./.github/workflows/compatibility.yml
+
   goreleaser:
+    needs: verify-ubuntu
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

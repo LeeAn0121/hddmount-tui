@@ -2,6 +2,9 @@ version: 2
 
 project_name: hddmount-tui
 
+snapshot:
+  version_template: "{{ incpatch .Version }}-devel"
+
 before:
   hooks:
     - go mod tidy
@@ -17,8 +20,8 @@ builds:
     goarch:
       - amd64
       - arm64
-    # Ubuntu 18.04/20.04/22.04 전체 지원: 정적 바이너리이므로 glibc 버전
-    # 걱정 없이 동일 바이너리가 세 버전 모두에서 동작합니다.
+    # Ubuntu 22.04 이상: glibc 의존성을 없앤다.
+    # 외부 도구 호환성은 별도 Ubuntu 매트릭스에서 검사한다.
     ldflags:
       - -s -w -X main.version={{.Version}}
 
@@ -46,10 +49,18 @@ nfpms:
     bindir: /usr/bin
     section: utils
     priority: optional
-    recommends:
+    dependencies:
+      - coreutils
       - parted
       - e2fsprogs
       - util-linux
+      - mount
+      - psmisc
+    recommends:
+      - smartmontools
+    suggests:
+      - mdadm
+      - initramfs-tools
 
 checksum:
   name_template: "checksums.txt"
